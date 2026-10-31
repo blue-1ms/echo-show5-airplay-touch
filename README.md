@@ -43,6 +43,28 @@ their original threads for instructions, supported firmware and full credits.
 These links are specific to `cronos`, not a compatibility claim for other Echo
 models. See [ATTRIBUTION.md](ATTRIBUTION.md) for additional project credits.
 
+### Supporting open-source projects
+
+We also thank the maintainers and contributors of the projects powering the
+validated setup:
+
+| Project | Contribution |
+| --- | --- |
+| [NQPTP](https://github.com/mikebrady/nqptp) — Mike Brady and contributors | Timing information used by Shairport Sync for AirPlay 2 synchronization |
+| [PulseAudio](https://www.freedesktop.org/wiki/Software/PulseAudio/) and [Termux packages](https://github.com/termux/termux-packages/tree/master/packages/pulseaudio) | Audio transport and the Android AAudio sink used on the tested Echo |
+| [Termux](https://github.com/termux/termux-app) | Android terminal and native package environment |
+| [Avahi](https://github.com/avahi/avahi) | AirPlay and optional peer discovery over mDNS/DNS-SD |
+| [D-Bus](https://www.freedesktop.org/wiki/Software/dbus/), [dbus-python](https://dbus.freedesktop.org/doc/dbus-python/) and [Python](https://www.python.org/) | Receiver control, metadata and the local companion server |
+| [Alpine Linux](https://alpinelinux.org/) | Linux chroot and packaged dependencies |
+| [Android Open Source Project](https://source.android.com/), [Chromium](https://www.chromium.org/) and [LineageOS](https://lineageos.org/) | Android platform, AAudio API, WebView and device OS foundation |
+| [Magisk](https://github.com/topjohnwu/Magisk) and [TWRP](https://twrp.me/) | Root/boot hooks and recovery used in the tested device setup |
+
+The receiver also relies on upstream libraries including FFmpeg, OpenSSL,
+libsodium, Libgcrypt, libplist, GLib, libsoxr and libconfig. See
+[ATTRIBUTION.md](ATTRIBUTION.md) for their links, build-tool credits and the
+scope of these acknowledgments. Each project retains its own authorship and
+license; this repository's MIT license applies to this companion's code.
+
 ## Compatibility
 
 | Environment | Status |
