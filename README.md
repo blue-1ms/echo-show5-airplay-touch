@@ -114,6 +114,11 @@ authentication, invalid-volume rejection and, when paired, signature/replay
 checks. Tests do not intentionally change playback or volume. `node test-ui.js`
 checks the single-device and paired UI states without a device.
 
+Run `python3 test_discovery.py` for offline Avahi recovery checks. These cover
+uncommitted, collided and failed service groups, daemon restarts, and waiting
+for host-name registration. A reachable D-Bus object alone is not sufficient
+evidence that the receiver's pairing service is being advertised.
+
 Real Echo checks covered touch pause/resume, next track, receiver volume,
 original artwork, long multilingual metadata, progress, dim/return and launching
 from the home-screen shortcut. Linked volume was also confirmed on both devices.

@@ -68,10 +68,7 @@ def monitor_peer():
     group = None
     while True:
         try:
-            if group is None:
-                group = publish_pair_service()
-            else:
-                group.GetState(timeout=2)
+            group = maintain_pair_service(group)
         except Exception:
             group = None
         try:
@@ -80,12 +77,38 @@ def monitor_peer():
             PEER['online'] = False
         time.sleep(5)
 
+def maintain_pair_service(group):
+    # A reachable EntryGroup is not necessarily advertised. Avahi may reset it
+    # after host-name conflict resolution, interface changes, or daemon restart.
+    if group is not None:
+        try:
+            state = int(group.GetState(timeout=2))
+            if state in (1, 2):  # REGISTERING or ESTABLISHED
+                return group
+        except Exception:
+            pass
+        try:
+            group.Free(timeout=2)
+        except Exception:
+            pass
+    avahi = dbus.Interface(system_bus().get_object('org.freedesktop.Avahi', '/'), 'org.freedesktop.Avahi.Server')
+    if int(avahi.GetState(timeout=2)) != 2:  # Wait until the host name is stable.
+        return None
+    return publish_pair_service()
+
 def publish_pair_service():
     connection = system_bus()
     avahi = dbus.Interface(connection.get_object('org.freedesktop.Avahi', '/'), 'org.freedesktop.Avahi.Server')
     group = dbus.Interface(connection.get_object('org.freedesktop.Avahi', avahi.EntryGroupNew()), 'org.freedesktop.Avahi.EntryGroup')
-    group.AddService(-1, 0, dbus.UInt32(0), PAIR['self_service'], '_echo-volume._tcp', 'local', '', dbus.UInt16(8766), dbus.Array([], signature='ay'))
-    group.Commit()
+    try:
+        group.AddService(-1, 0, dbus.UInt32(0), PAIR['self_service'], '_echo-volume._tcp', 'local', '', dbus.UInt16(8766), dbus.Array([], signature='ay'))
+        group.Commit()
+    except Exception:
+        try:
+            group.Free(timeout=2)
+        except Exception:
+            pass
+        raise
     return group
 
 def interfaces():
