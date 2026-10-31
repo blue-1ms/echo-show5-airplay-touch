@@ -97,3 +97,10 @@ app; it does not install or repair the backend.
 Do not publish `pair.json`, `pair.key`, signing keystores, device backups, live
 logs or personal screenshots. These are not required for other users to run the
 project. The checked-in example deliberately contains no usable key.
+
+## Display and recovery
+
+The info menu includes **Auto dim: 3 min / Off**. Each device stores its own
+preference. Playback wakes auto-dimmed screens; manually dimmed screens require
+a tap. See the README install/upgrade section for prerequisite checks, backups
+and the optional boot hook for the tested rooted Echo environment.

@@ -57,5 +57,25 @@ class DiscoveryTests(unittest.TestCase):
         self.assertIs(server.maintain_pair_service(None), self.publisher.return_value)
 
 
+class BusRecoveryTests(unittest.TestCase):
+    def test_disconnected_bus_is_replaced(self):
+        stale = Mock()
+        stale.get_is_connected.return_value = False
+        server.thread_data.bus = stale
+        with patch.object(server.dbus, 'SystemBus', return_value=Mock()) as connect:
+            self.assertIs(server.system_bus(), connect.return_value)
+            connect.assert_called_once_with(private=True)
+        del server.thread_data.bus
+
+    def test_connected_bus_is_kept(self):
+        live = Mock()
+        live.get_is_connected.return_value = True
+        server.thread_data.bus = live
+        with patch.object(server.dbus, 'SystemBus') as connect:
+            self.assertIs(server.system_bus(), live)
+            connect.assert_not_called()
+        del server.thread_data.bus
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

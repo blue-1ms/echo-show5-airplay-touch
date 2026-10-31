@@ -14,6 +14,7 @@ const context = vm.createContext({
   document: {hidden: false, getElementById: id => {
     assert(elements.has(id), 'Unknown element: ' + id); return elements.get(id);
   }, addEventListener() {}}, window: {}, fetch: () => new Promise(() => {}),
+  AbortController, localStorage:{getItem(){return null},setItem(){}},
   setInterval() {}, setTimeout() {}, clearTimeout() {}, location: {reload() {}},
 });
 vm.runInContext(script, context);
@@ -36,3 +37,29 @@ assert.equal(elements.get('toggle').disabled,true);
 assert.equal(elements.get('pairHelp').hidden,true);
 assert(!/left channel|right channel/i.test(script));
 console.log('PASS: unique IDs, single receiver, paired volume, missing peer, idle controls, no fixed L/R labels');
+
+// Auto dim responds to idle time and resumes only automatically dimmed screens.
+vm.runInContext("dim(false);lastInteraction=Date.now()-180001; previousPlaying=false",context);
+render({...single,active:false,state:'Stopped'});
+assert.equal(elements.get('night').hidden,false);
+render(single);
+assert.equal(elements.get('night').hidden,true);
+vm.runInContext("dim(true,false)",context);
+render(single);
+assert.equal(elements.get('night').hidden,false,'Manual dim stays dim while playing');
+vm.runInContext("dim(false); autoDim=false;lastInteraction=Date.now()-180001",context);
+render({...single,active:false,state:'Stopped'});
+assert.equal(elements.get('night').hidden,true,'Auto dim can be disabled');
+(async()=>{
+ const sent=[]; let release;
+ context.fetch=async (url,opts)=>{
+  sent.push(JSON.parse(opts.body).value);
+  if(sent.length===1)await new Promise(resolve=>release=resolve);
+  return {ok:true,status:200,json:async()=>({ok:true})};
+ };
+ const first=vm.runInContext("control('volume',20)",context);
+ vm.runInContext("control('volume',30);control('volume',45)",context);
+ release(); await first;
+ assert.deepEqual(sent,[20,45],'Send the latest queued volume, not intermediate requests');
+ console.log('PASS: auto dim, playback wake, manual dim, disabled auto dim, latest-volume queue');
+})().catch(e=>{console.error(e);process.exitCode=1});

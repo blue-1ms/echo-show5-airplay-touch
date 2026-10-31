@@ -68,9 +68,19 @@ class TouchTests(unittest.TestCase):
             urlopen(request, timeout=5)
         self.assertEqual(error.exception.code, 403)
 
+    def test_session_refresh_and_host_restriction(self):
+        with urlopen(server.ORIGIN + '/api/session', timeout=5) as response:
+            token = json.load(response)['token']
+        with urlopen(server.ORIGIN + '/api/state', timeout=5) as response:
+            self.assertEqual(json.load(response)['token'], token)
+        request = Request(server.ORIGIN + '/api/session', headers={'Host': 'other.example'})
+        with self.assertRaises(HTTPError) as error:
+            urlopen(request, timeout=5)
+        self.assertEqual(error.exception.code, 403)
+
     def test_invalid_volume_rejected_without_changing_audio(self):
         html = urlopen(server.ORIGIN, timeout=5).read().decode()
-        token = re.search("const token='([^']+)'", html).group(1)
+        token = re.search("(?:const|let) token='([^']+)'", html).group(1)
         request = Request(server.ORIGIN + '/api/control', data=b'{"action":"volume","value":101}', headers={'X-Echo-Token': token, 'Content-Type': 'application/json'}, method='POST')
         with self.assertRaises(HTTPError) as error:
             urlopen(request, timeout=5)

@@ -29,7 +29,7 @@ PEER = {'online': False}
 peer_address = ('', 0)
 
 def system_bus():
-    if not hasattr(thread_data, 'bus'):
+    if not hasattr(thread_data, 'bus') or not thread_data.bus.get_is_connected():
         thread_data.bus = dbus.SystemBus(private=True)
     return thread_data.bus
 
@@ -208,6 +208,10 @@ class PeerHandler(BaseHTTPRequestHandler):
             self.reply(503, {'error':'Receiver unavailable'})
 
 class Handler(BaseHTTPRequestHandler):
+    def setup(self):
+        super().setup()
+        self.connection.settimeout(10)
+
     def log_message(self, *_):
         pass
 
@@ -232,8 +236,10 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if path == '/':
                 return self.reply(200, (ROOT / 'index.html').read_text().replace('__TOKEN__', TOKEN), 'text/html; charset=utf-8')
+            if path == '/api/session':
+                return self.reply(200, {'token': TOKEN})
             if path == '/api/state':
-                return self.reply(200, read_state())
+                return self.reply(200, dict(read_state(), token=TOKEN))
             if path == '/api/art':
                 _, props, _ = interfaces()
                 metadata = props.Get(IFACE, 'Metadata', timeout=3)

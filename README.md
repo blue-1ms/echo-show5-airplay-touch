@@ -70,8 +70,8 @@ split, pan or assign left/right channels.
 
 `start-touch.sh` is an optional idempotent launcher for the tested chroot. Call
 it from your existing startup system after D-Bus and Shairport are ready. It is
-not a generic Android installer or a systemd unit. Boot behavior of the complete
-modified Echo setup has not yet been validated by a full reboot.
+not a generic Android installer or a systemd unit. See the optional boot hook
+below for the tested rooted Echo environment.
 
 ## Optional two-device volume linking
 
@@ -135,7 +135,7 @@ checks the single-device and paired UI states without a device.
 
 Run `python3 test_discovery.py` for offline Avahi recovery checks. These cover
 uncommitted, collided and failed service groups, daemon restarts, and waiting
-for host-name registration. A reachable D-Bus object alone is not sufficient
+for host-name registration, plus reconnecting a disconnected system bus. A reachable D-Bus object alone is not sufficient
 evidence that the receiver's pairing service is being advertised.
 
 Real Echo checks covered touch pause/resume, next track, receiver volume,
@@ -149,3 +149,50 @@ This frontend does not turn an AAC stream into lossless audio, apply EQ or claim
 to improve speaker fidelity. The tested Echo audio backend is PulseAudio/AAudio;
 direct ALSA on that vendor kernel previously caused crashes and is not part of
 these installation instructions.
+
+## Daily use and recovery
+
+- **Auto dim** defaults to three minutes after playback pauses or stops. Touch
+  the screen to wake it. Resuming playback wakes an automatically dimmed screen;
+  a manually dimmed screen stays dim. Toggle this in the info menu. The setting
+  is saved on each device.
+- Rapid volume changes retain only the latest pending value instead of queuing
+  every intermediate change while a paired receiver responds.
+- Requests have timeouts, the UI reconnects automatically, and control sessions
+  refresh after backend restarts. Avahi advertisements and disconnected D-Bus
+  connections are recreated when needed. Offline peers are shown explicitly.
+
+## Install and upgrade helpers
+
+Inside an **existing working receiver environment**, from this source directory:
+
+```sh
+sh install.sh --check
+sh install.sh
+```
+
+The check requires Python, dbus-python, system D-Bus and Shairport MPRIS.
+Installation backs up old program files, restarts only the touch backend and
+checks its state endpoint. It preserves `pair.json` and all receiver/audio
+settings. A fresh installation remains unpaired. This does not install the ROM,
+audio backend, receiver or Android APK. Build and install the APK separately;
+updates must use the same signing key.
+
+For the tested rooted Echo environment only, `echo-boot.sh` is an optional Magisk
+`service.d` hook. It requires the existing **idempotent**
+`/data/local/echo-start.sh`, which starts the audio, receiver and touch services.
+Install it as `/data/adb/service.d/echo-airplay.sh` with mode `0755`, replacing the
+existing hook rather than creating a second one. After Android boots, it starts
+the receiver and opens Echo AirPlay, then checks for missing processes every
+30 seconds using that starter. It does not repeatedly bring the app to the
+foreground or forcibly restart a running audio process. Other installations
+should use their own service manager. Process recovery does not guarantee
+detection of an audio driver that is alive but unresponsive.
+
+To roll back a UI/backend update, restore `server.py`, `index.html` and
+`start-touch.sh` from the backup directory printed by the installer, then restart
+only the touch backend. Do not replace private pairing settings with examples.
+
+Validation on Echo 1 included an Android reboot: the receiver and touchscreen
+started automatically, and all eight live backend checks passed. This was a
+software reboot, not a physical power-loss test.
