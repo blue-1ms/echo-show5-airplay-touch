@@ -104,3 +104,17 @@ The info menu includes **Auto dim: 3 min / Off**. Each device stores its own
 preference. Playback wakes auto-dimmed screens; manually dimmed screens require
 a tap. See the README install/upgrade section for prerequisite checks, backups
 and the optional boot hook for the tested rooted Echo environment.
+
+### Tested AAudio backend: avoid idle suspension
+
+Reboot/playback validation exposed a hang in the tested native PulseAudio AAudio
+backend when `module-suspend-on-idle` closed the stream after five idle seconds.
+The process remained alive but subsequent AirPlay streams timed out. On this
+specific setup, remove the `load-module module-suspend-on-idle timeout=5` line
+from the existing Termux PulseAudio configuration and restart that audio backend
+once. Keep `module-aaudio-sink` and the existing local socket configuration.
+Do not apply this as a blanket recommendation for other audio drivers.
+
+Display auto dim is independent of audio suspension and remains available.
+Keeping the AAudio sink open may use more idle power. The generic frontend
+installer deliberately does not edit another project's audio configuration.
