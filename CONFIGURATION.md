@@ -118,3 +118,8 @@ Do not apply this as a blanket recommendation for other audio drivers.
 Display auto dim is independent of audio suspension and remains available.
 Keeping the AAudio sink open may use more idle power. The generic frontend
 installer deliberately does not edit another project's audio configuration.
+
+The tested chroot keeps `/run` on disk. A stale Avahi PID file can refer to an
+unrelated Android process after reboot, causing Avahi's PID-based check to skip
+startup. The Echo boot hook removes that stale PID file only when no actual
+`avahi-daemon` process is running, before invoking the existing starter.
