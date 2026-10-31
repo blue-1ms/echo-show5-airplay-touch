@@ -13,3 +13,9 @@ pair.key
 build/
 dist/
 *.log
+
+.installer-cache/
+!dist/
+dist/*
+!dist/Echo-AirPlay.apk
+!dist/Echo-AirPlay.apk.sha256

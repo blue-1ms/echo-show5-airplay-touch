@@ -14,6 +14,56 @@ an audio driver. The existing terminal UI is independent of this companion.
 
 **One Echo is enough. Multiple devices are optional.**
 
+## On a real Echo
+
+![Echo Show 5 Gen 2 playing Apple Music over AirPlay](assets/echo-airplay-playing.png)
+
+Actual device screenshot: original album art, playback controls, progress and
+volume. The optional peer was offline in this capture; a second Echo is not
+required. Album artwork and track metadata belong to their respective owners.
+
+## Windows one-click setup
+
+1. Start with an **unlocked Echo Show 5 Gen 2 (`cronos`), LineageOS 18.1 / Android
+   11, working Magisk root and USB debugging**. Follow the credited XDA projects
+   below for that preparation. This installer never unlocks or flashes a ROM.
+2. Download this repository using **Code → Download ZIP**, extract it, connect
+   one Echo by USB and authorize the computer.
+3. Double-click **`Install.cmd`**. Approve Termux's root request on the Echo if
+   Magisk asks. Keep power and USB connected until the installer finishes.
+
+This is an **online installer**, not an offline all-in-one ROM image. For a
+fresh device it downloads verified Termux/Alpine/source archives, installs the
+runtime and build dependencies, builds Shairport Sync 5.6.2 and NQPTP 1.2.9,
+configures PulseAudio/AAudio, installs the included touchscreen APK and boot
+hook, then checks the local receiver. Source compilation can take tens of
+minutes. Allow at least 1.5 GB free on the device and Internet access on both
+the PC and Echo. The PC is not needed after setup.
+
+Existing supported installations use the **upgrade path**, preserving receiver
+names, audio configuration and private pairing settings. Fresh installs use a
+unique receiver name and **do not enable pairing**. No JDK or Android SDK is
+needed to use the included APK. It is the experimental development-signed
+build from this source; rebuilding with another key requires handling Android's
+signature mismatch yourself. The installer never uninstalls an existing app to
+bypass that mismatch.
+
+Read-only prerequisite check, or an explicit ADB path:
+
+```powershell
+./Install.ps1 -AdbPath C:/path/to/platform-tools/adb.exe -CheckOnly
+./Install.ps1 -AdbPath C:/path/to/platform-tools/adb.exe
+```
+
+Without a supplied ADB, normal installation finds it on PATH or downloads
+Google's Windows platform tools. Root grants and USB authorization require your
+confirmation on the device; the installer cannot bypass them. An existing
+non-debuggable Termux build may not support `run-as`; it is left untouched and
+the installer reports the failure rather than replacing its data.
+
+See [INSTALLATION.md](INSTALLATION.md) for scope, dependencies, troubleshooting
+and validation status. The manual companion-only instructions remain below.
+
 ## Credits: the projects that made this possible
 
 **[Shairport Sync](https://github.com/mikebrady/shairport-sync)** by

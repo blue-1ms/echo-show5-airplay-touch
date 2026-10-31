@@ -1,0 +1,22 @@
+[
+  {
+    "file": "alpine.tar.gz",
+    "url": "https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/armv7/alpine-minirootfs-3.22.7-armv7.tar.gz",
+    "sha256": "7ba5bb8d013ed0545309d6f850c7a2d14dce956def98121fb6c60d5d0be343d8"
+  },
+  {
+    "file": "termux.apk",
+    "url": "https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3%2Bgithub-debug_armeabi-v7a.apk",
+    "sha256": "89416397b70f9ff67a0044e8abe6ef82487cd48fcf543e2d23e02688cc541cf0"
+  },
+  {
+    "file": "shairport-5.6.2.tar.gz",
+    "url": "https://codeload.github.com/mikebrady/shairport-sync/tar.gz/refs/tags/5.6.2",
+    "sha256": "0747706e19a64ec550ec8a6a5c26bf8e231a4d032de31644f5a5daa0632c41c4"
+  },
+  {
+    "file": "nqptp-1.2.9.tar.gz",
+    "url": "https://codeload.github.com/mikebrady/nqptp/tar.gz/refs/tags/1.2.9",
+    "sha256": "6aa1d73b8ee760bf19378c319db0d0537a867ff961764b150e19f87d96a02210"
+  }
+]
