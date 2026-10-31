@@ -16,7 +16,14 @@ Their work made this device setup possible. This repository does not claim
 authorship of the unlock, recovery or Android port. Refer to those original
 threads for their full credits and installation requirements.
 
-The receiver is [Shairport Sync](https://github.com/mikebrady/shairport-sync).
+The receiver is [Shairport Sync](https://github.com/mikebrady/shairport-sync),
+by **Mike Brady and contributors**. It provides AirPlay / AirPlay 2 reception,
+playback synchronization, metadata and control interfaces. This companion's
+touchscreen controls and optional volume linking build on that work; they do
+not implement the underlying AirPlay receiver or audio synchronization engine.
+See the upstream [AUTHORS](https://github.com/mikebrady/shairport-sync/blob/master/AUTHORS)
+and [LICENSES](https://github.com/mikebrady/shairport-sync/blob/master/LICENSES)
+for contributor credits and licensing.
 Its source and binaries are not included in this repository. The tested audio
 setup also uses NQPTP, Avahi, PulseAudio/AAudio, Termux and LineageOS; these remain
 separate projects with their own licenses and installation requirements.

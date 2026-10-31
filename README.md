@@ -16,6 +16,16 @@ an audio driver. The existing terminal UI is independent of this companion.
 
 ## Credits: the projects that made this possible
 
+**[Shairport Sync](https://github.com/mikebrady/shairport-sync)** by
+**Mike Brady and contributors** is the core AirPlay / AirPlay 2 receiver behind
+this setup. It provides audio reception, synchronized playback and the metadata
+and control interfaces used by this touchscreen companion. Thank you to its
+authors and community for making this project possible. This repository adds
+the touchscreen interface and optional volume linking; credit for the receiver
+and playback synchronization belongs to Shairport Sync and its upstream
+dependencies. Please see its [authors](https://github.com/mikebrady/shairport-sync/blob/master/AUTHORS)
+and [license](https://github.com/mikebrady/shairport-sync/blob/master/LICENSES).
+
 The tested Echo setup would not be possible without the developers and
 contributors behind these two XDA projects for **Echo Show 5 Gen 2 (2021),
 codename `cronos`**:
