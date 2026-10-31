@@ -242,7 +242,7 @@ class Handler(BaseHTTPRequestHandler):
                     return self.reply(200, art.read_bytes(), mimetypes.guess_type(str(art))[0] or 'image/jpeg')
             return self.reply(404, {'error': 'Not found'})
         except Exception:
-            return self.reply(503, {'ok': False, 'error': '接收服务正在连接，请稍候'})
+            return self.reply(503, {'ok': False, 'error': 'Receiver connecting. Please wait.'})
 
     def do_POST(self):
         if self.headers.get('Host') != '127.0.0.1:8765' or self.headers.get('X-Echo-Token') != TOKEN or self.headers.get('Origin', ORIGIN) != ORIGIN:
@@ -267,7 +267,7 @@ class Handler(BaseHTTPRequestHandler):
                     try:
                         peer_call('volume', value=value)
                     except Exception:
-                        return self.reply(200, {'ok':True, 'warning':'仅本机音量已调整；另一台未连接，请检查供电和 Wi-Fi'})
+                        return self.reply(200, {'ok':True, 'warning':'Only this device changed volume. Peer offline; check its power and Wi-Fi.'})
             elif action == 'link' and PAIR.get('secret'):
                 enabled = data.get('enabled')
                 if not isinstance(enabled, bool):
@@ -277,7 +277,7 @@ class Handler(BaseHTTPRequestHandler):
                     try:
                         peer_call('link', enabled=False)
                     except Exception:
-                        return self.reply(200, {'ok':True, 'warning':'本机联动已关闭；另一台未连接，请在那台设备上也关闭联动'})
+                        return self.reply(200, {'ok':True, 'warning':'Link disabled here. Peer offline; disable linking on that device too.'})
                     return self.reply(200, {'ok':True})
                 # Align to the quieter receiver when linking, avoiding a surprise increase.
                 result = peer_call('link', enabled=enabled)
@@ -289,12 +289,12 @@ class Handler(BaseHTTPRequestHandler):
             elif action in methods and state['can_' + action]:
                 getattr(player, methods[action])(timeout=3)
             else:
-                return self.reply(409, {'error': '当前设备暂不支持此操作，请在 iPhone 上操作'})
+                return self.reply(409, {'error': 'This control is unavailable. Use your iPhone.'})
             return self.reply(200, {'ok': True})
         except (ValueError, KeyError, TypeError):
             return self.reply(400, {'error': 'Invalid request'})
         except Exception:
-            return self.reply(503, {'error': '操作未完成，请稍后重试'})
+            return self.reply(503, {'error': 'Action failed. Please try again.'})
 
 if __name__ == '__main__':
     if PAIR.get('secret'):

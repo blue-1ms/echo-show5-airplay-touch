@@ -45,9 +45,9 @@ models. See [ATTRIBUTION.md](ATTRIBUTION.md) for additional project credits.
 
 See [CONFIGURATION.md](CONFIGURATION.md) for the single-device setup and optional
 pairing. No ROM, unlock tools, root package, receiver binary or ready-to-flash
-image is distributed here. The current UI is in Simplified Chinese; this README
-and configuration guide are in English. English UI localization is not yet
-implemented.
+image is distributed here. The touchscreen UI, Android startup screen, status messages, README and
+configuration guide are in English. Track titles and artist names retain the
+original language supplied by the sender.
 ## Single-device setup (default)
 
 Prerequisites: Python 3.12, dbus-python, and Shairport Sync with metadata, D-Bus

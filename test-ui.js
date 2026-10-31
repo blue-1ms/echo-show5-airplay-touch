@@ -24,15 +24,15 @@ function render(state) {context.snapshot=state;vm.runInContext('render(snapshot)
 render(single);
 assert.equal(elements.get('pairHelp').hidden,true,'Single receiver must hide pair guidance');
 assert.equal(elements.get('toggle').disabled,false,'Single receiver keeps playback controls');
-assert.equal(elements.get('hint').textContent,'音量仅调整此 Echo');
+assert.equal(elements.get('hint').textContent,'Volume for this Echo only');
 render({...single, paired:true, linked:true, peer_name:'Kitchen', peer_online:true, peer_volume:40});
 assert.equal(elements.get('pairHelp').hidden,false);
 assert.match(elements.get('hint').textContent,/Kitchen 40%/);
 render({...single, paired:true, linked:true, peer_online:false});
-assert.match(elements.get('hint').textContent,/未连接/);
+assert.match(elements.get('hint').textContent,/Peer offline/);
 render({...single, active:false, can_toggle:false, can_next:false, can_previous:false});
 assert.equal(elements.get('volume').disabled,true);
 assert.equal(elements.get('toggle').disabled,true);
 assert.equal(elements.get('pairHelp').hidden,true);
-assert(!script.includes('左声道') && !script.includes('右声道'));
+assert(!/left channel|right channel/i.test(script));
 console.log('PASS: unique IDs, single receiver, paired volume, missing peer, idle controls, no fixed L/R labels');

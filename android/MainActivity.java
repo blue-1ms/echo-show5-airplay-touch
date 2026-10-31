@@ -39,7 +39,7 @@ public class MainActivity extends Activity {
    @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {return !local(request.getUrl().toString());}
    @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
     if(request.isForMainFrame()) {
-     view.loadDataWithBaseURL(URL,"<html><body style='background:#101215;color:#bcebd8;font:24px sans-serif;text-align:center;padding:15vh'>Echo AirPlay<p style='font-size:17px;color:#b1b8bc'>正在等待本机接收服务启动…</p></body></html>","text/html","UTF-8",null);
+     view.loadDataWithBaseURL(URL,"<html><body style='background:#101215;color:#bcebd8;font:24px sans-serif;text-align:center;padding:15vh'>Echo AirPlay<p style='font-size:17px;color:#b1b8bc'>Waiting for the local receiver…</p></body></html>","text/html","UTF-8",null);
      handler.postDelayed(() -> {if(!destroyed) web.loadUrl(URL);},3000);
     }
    }
