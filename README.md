@@ -14,6 +14,25 @@ an audio driver. The existing terminal UI is independent of this companion.
 
 **One Echo is enough. Multiple devices are optional.**
 
+## Credits: the projects that made this possible
+
+The tested Echo setup would not be possible without the developers and
+contributors behind these two XDA projects for **Echo Show 5 Gen 2 (2021),
+codename `cronos`**:
+
+- **[Unofficial LineageOS 18.1 for the Amazon Echo Show 5 (2021)](https://xdaforums.com/t/rom-unofficial-11-cronos-lineageos-18-1-for-the-amazon-echo-show-5-2021.4772598/)**
+  provides the Android ROM used by our tested devices. Credit goes to its
+  maintainers and contributors, and the upstream LineageOS community.
+- **[Unlock / Root / TWRP / Unbrick for the Amazon Echo Show 5, 2nd Gen (2021)](https://xdaforums.com/t/unlock-root-twrp-unbrick-amazon-echo-show-5-2nd-gen-2021-cronos.4772596/)**
+  provides the jailbreak/unlock and recovery work that made installing a custom
+  ROM on these devices possible. Credit goes to its developers and contributors.
+
+This repository adds the AirPlay touchscreen companion; the device unlock,
+recovery and Android port are the work of those upstream projects. Please visit
+their original threads for instructions, supported firmware and full credits.
+These links are specific to `cronos`, not a compatibility claim for other Echo
+models. See [ATTRIBUTION.md](ATTRIBUTION.md) for additional project credits.
+
 ## Compatibility
 
 | Environment | Status |
