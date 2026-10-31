@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+pair.json
+pair.tmp
+pair.key
+*.keystore
+*.jks
+*.apk
+*.idsig
+.env
+.env.*
+build/
+dist/
+*.log
