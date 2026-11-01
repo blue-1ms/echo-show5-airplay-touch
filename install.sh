@@ -9,17 +9,20 @@ check() {
  python3 -c 'import dbus; import sys; assert sys.version_info >= (3, 9)'
  python3 -c 'import dbus; b=dbus.SystemBus(); assert b.name_has_owner("org.mpris.MediaPlayer2.ShairportSync"), "Shairport MPRIS unavailable"'
  [ -r "$SRC/server.py" ] && [ -r "$SRC/index.html" ] && [ -r "$SRC/receiver.py" ] && [ -r "$SRC/reliability.py" ] && [ -r "$SRC/installer/start-receiver.sh" ]
+ for required in preferences.py local_audio.py pairing.py; do [ -r "$SRC/$required" ] || return 1; done
  echo "PASS: Python, D-Bus, Shairport MPRIS and source files"
 }
 check
 [ "${1:-}" != "--check" ] || exit 0
 [ "$(id -u)" = 0 ] || { echo "Run as root inside the receiver environment"; exit 1; }
+command -v avahi-browse >/dev/null || apk add --no-cache avahi-tools
+command -v openssl >/dev/null || apk add --no-cache openssl
 mkdir -p "$DEST" /root
 python3 -m py_compile "$SRC/server.py"
 # Backups contain program files only. Existing private configuration is untouched.
 BACKUP="$DEST/backups/$(date +%Y%m%d-%H%M%S)-$$"
 mkdir -p "$BACKUP"
-for file in reliability.py receiver.py server.py index.html; do
+for file in preferences.py local_audio.py pairing.py reliability.py receiver.py server.py index.html; do
  [ ! -f "$DEST/$file" ] || cp "$DEST/$file" "$BACKUP/$file"
  cp "$SRC/$file" "$DEST/$file.new"
  chmod 644 "$DEST/$file.new"

@@ -146,3 +146,41 @@ A failed probe shows `Reconnecting`. `Offline` requires at least three consecuti
 The backend samples receiver state independently of HTTP requests. Sender playback-rate metadata, explicit stream pause/resume events and MPRIS state feed a shared display state. A rate of zero reports pause even if MPRIS is stale. A flush, quiet music or missing progress alone does not mean pause. Ambiguous active sessions show `Receiving audio`; unknown playback does not trigger automatic dimming. The companion consumes the existing `/tmp/shairport-sync-metadata` FIFO: do not run another consumer of that FIFO at the same time.
 
 Internal diagnostics are bounded to four 256 KiB files under `/run/echo-airplay/diagnostics.log`. They record playback evidence, raw AirPlay volume, displayed volume, link actions and error categories, without pairing keys or authentication tokens. The optional Android-root `installer/observe-audio.sh` records PulseAudio and Android gain for up to one hour, using at most two approximately 512 KiB files in `/data/local/tmp/echo-audio-observation.log`. It does not change volume or start at boot. Diagnostic files are private and are not part of the repository.
+
+
+## Touchscreen preferences
+
+The Android launcher version 1.2 adds system file selection for backups. Keep
+`preferences.py`, `local_audio.py` and `pairing.py` beside `server.py`; use the
+complete installer when upgrading. Settings are private files in the companion
+directory, not repository configuration.
+
+- **Sleep timer:** 1–180 minutes; the final minute fades local output. At expiry
+  the initiating receiver requests iPhone pause. With both devices selected,
+  the peer fades to the same deadline without sending a second pause. A peer
+  failure is reported and the local timer continues. Expired timers stay muted
+  across restarts until **Cancel / restore sound**. Cancellation never resumes
+  the sender. A failed pause is reported while local output remains muted.
+- **Standby clock:** appears after 60 seconds without interaction while idle or
+  paused. Playback or a touch dismisses it. Night hours use Android's local
+  time; equal start/end hours disable scheduled dimming. Default hours: 22–07.
+- **Layout:** artwork or large text. Swipe long title/artist/album text sideways.
+- **Local output limit:** a 0–100% PulseAudio sink gain ceiling, independent of
+  the iPhone volume slider and peer linking. This is not a calibrated loudness
+  or hearing-protection limit. Default 100%; no compression or normalization.
+- **Pairing:** remove an existing pairing before creating another. Open the
+  two-minute pairing window on both screens, scan on one, and select the other.
+  Compare all 12 hexadecimal characters on both displays, then confirm on each.
+  A mismatch must not be approved. X25519 derives a fresh shared key; neither
+  discovery alone nor a single confirmation completes pairing. Volume linking
+  starts disabled after a new pairing. Removing an offline peer requires
+  removing the pairing on that peer separately.
+- **Backup:** Save backup opens Android's document picker. Choose backup shows
+  a preview before restoration. By default backups contain only the name and
+  display/output preferences, not pairing keys or timers. Optional pairing
+  data is a secret: store the JSON privately and never upload it to GitHub.
+  Pairing restoration is restricted to the original device identity. Restoring
+  a name restarts the receiver, so reconnect AirPlay afterward.
+
+Before rolling back to an older backend, cancel sleep timers and restore the
+local output limit to 100%; older versions do not manage this sink gain.

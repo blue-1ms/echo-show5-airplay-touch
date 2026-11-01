@@ -2,7 +2,7 @@
 set -eu
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 apk update
-apk add ca-certificates dbus avahi python3 py3-dbus libpulse \
+apk add ca-certificates openssl dbus avahi avahi-tools python3 py3-dbus libpulse \
  build-base autoconf automake libtool pkgconf avahi-dev libconfig-dev \
  openssl-dev popt-dev soxr-dev pulseaudio-dev glib-dev libsodium-dev \
  libgcrypt-dev libplist-dev libplist-util util-linux-dev ffmpeg-dev xxd

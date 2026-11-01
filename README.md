@@ -22,6 +22,22 @@ Actual device screenshot: original album art, playback controls, progress and
 volume. The optional peer was offline in this capture; a second Echo is not
 required. Album artwork and track metadata belong to their respective owners.
 
+## Touchscreen features
+
+Open **Settings** on the Echo for a sleep timer, standby clock and night hours,
+artwork or large-text layouts, a local output limit, optional device pairing,
+and JSON backup/restore through Android's file picker. Long track text can be
+scrolled horizontally with a finger. These features work with one receiver;
+pairing and applying a timer to both receivers are optional.
+
+The sleep timer fades the selected Echo during its final minute, then requests
+pause on the iPhone. **Pausing the sender can stop every speaker in that AirPlay
+session**, including speakers not selected for the fade. Use **Cancel / restore
+sound** to restore local output afterward; this does not resume the iPhone.
+
+See [CONFIGURATION.md](CONFIGURATION.md#touchscreen-preferences) for behavior,
+backup privacy and pairing instructions.
+
 ## Windows one-click setup
 
 1. Start with an **unlocked Echo Show 5 Gen 2 (`cronos`), LineageOS 18.1 / Android
@@ -137,7 +153,7 @@ and MPRIS enabled. The Python process must be able to access the receiver's
 system D-Bus. The Android app needs only network permission for loopback; it
 does not request root.
 
-1. Copy `reliability.py`, `receiver.py`, `server.py` and `index.html` into `/opt/echo-touch/` inside the environment
+1. Copy `preferences.py`, `local_audio.py`, `pairing.py`, `reliability.py`, `receiver.py`, `server.py` and `index.html` into `/opt/echo-touch/` inside the environment
    where Shairport's system D-Bus is available. For touchscreen renaming, use the supplied
    `installer/start-receiver.sh` as the receiver startup script so it shares the lifecycle lock.
 2. Configure Shairport's cover-art cache as `/run/echo-airplay/coverart`, or set

@@ -86,7 +86,7 @@ try {
  New-Item -ItemType Directory -Force $cache | Out-Null
  $stage='/data/local/tmp/echo-touch-installer'
  Device @('shell',"mkdir -p $stage") | Out-Null
- $files=@('reliability.py','receiver.py','server.py','index.html','install.sh','start-touch.sh','echo-boot.sh') | ForEach-Object {Join-Path $PSScriptRoot $_}
+ $files=@('preferences.py','local_audio.py','pairing.py','reliability.py','receiver.py','server.py','index.html','install.sh','start-touch.sh','echo-boot.sh') | ForEach-Object {Join-Path $PSScriptRoot $_}
  $files+=@(Get-ChildItem "$PSScriptRoot/installer/*.sh" | ForEach-Object {$_.FullName})
  foreach($file in $files){Device @('push',$file,"$stage/") | Write-Host}
  if($mode -eq 'fresh') {

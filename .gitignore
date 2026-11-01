@@ -19,3 +19,11 @@ dist/
 dist/*
 !dist/Echo-AirPlay.apk
 !dist/Echo-AirPlay.apk.sha256
+
+# Device-local settings, identities and exported secrets
+preferences.json
+preferences.tmp
+identity.json
+identity.tmp
+pair.*.json
+echo-airplay-backup*.json

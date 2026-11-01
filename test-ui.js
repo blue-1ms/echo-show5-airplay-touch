@@ -8,10 +8,10 @@ const elements = new Map();
 for (const match of html.matchAll(/\bid="([^"]+)"/g)) {
   assert(!elements.has(match[1]), 'Duplicate id: ' + match[1]);
   elements.set(match[1], {hidden: false, style: {}, textContent: '', value: '',
-    setAttribute(name, value) {this[name] = value;}});
+    appendChild() {}, classList:{toggle(){}}, setAttribute(name, value) {this[name] = value;}});
 }
 const context = vm.createContext({
-  document: {hidden: false, getElementById: id => {
+  document: {hidden: false, body:{classList:{toggle(){}}}, createElement(){return {appendChild(){}}}, getElementById: id => {
     assert(elements.has(id), 'Unknown element: ' + id); return elements.get(id);
   }, addEventListener() {}}, window: {}, fetch: () => new Promise(() => {}),
   AbortController, localStorage:{getItem(){return null},setItem(){}},
@@ -72,3 +72,22 @@ render({...single,state:'Unknown',can_toggle:false});
 assert.equal(elements.get('state').textContent,'Receiving audio');
 assert.equal(elements.get('toggle').disabled,true);
 console.log('PASS: peer recovery vs receiver readiness and unconfirmed playback');
+
+// New settings must remain useful on a single receiver and share idle semantics.
+const settings={idle_clock:true,layout:'large-text',night_start:22,night_end:7,volume_limit:65};
+vm.runInContext("dim(false);$('info').hidden=true;lastInteraction=Date.now()-61000",context);
+render({...single,state:'Paused',settings,sleep:null});
+vm.runInContext('updateClock()',context);
+assert.equal(elements.get('standbyClock').hidden,false,'Paused receiver shows idle clock');
+assert.equal(elements.get('sleepBothLabel').hidden,true,'Solo receiver hides paired timer option');
+elements.get('standbyClock').onclick();
+assert.equal(elements.get('standbyClock').hidden,true,'Touch wakes clock');
+render({...single,settings});vm.runInContext('updateClock()',context);
+assert.equal(elements.get('standbyClock').hidden,true,'Playback hides clock');
+render({...single,settings,sleep:{finished:true,remaining:0}});
+assert.match(elements.get('sleepStatus').textContent,/restore sound/);
+context.window.receiveBackup(JSON.stringify({format:'echo-airplay-touch',version:1,name:'Living Room'}));
+assert.equal(elements.get('restoreBackup').disabled,false);
+context.window.receiveBackup('{bad');
+assert.equal(elements.get('restoreBackup').disabled,true,'Invalid import cannot restore stale backup');
+console.log('PASS: standby clock wake, solo timer controls, completed timer guidance, backup preview validation');

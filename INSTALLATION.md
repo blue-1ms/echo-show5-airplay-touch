@@ -76,3 +76,25 @@ experimental, not as a promise of unattended setup on an untested device.
 
 Run `python test_installer.py` on Windows for mocked-ADB guard tests (wrong
 model, multiple devices, unknown runtime and a read-only supported check).
+
+
+### Touchscreen feature dependencies
+
+The installer includes the version 1.2 Android launcher and installs the new
+Python companion modules on fresh installs and upgrades. Touch pairing uses
+Alpine `openssl` (X25519) and `avahi-tools` (discovery); the installer supplies
+both. Local output control uses the existing `libpulse` library and AAudio sink,
+without requiring the `pactl` command. Backup selection uses Android's system
+document picker and does not request broad storage access.
+
+
+Feature validation on two Echo Show 5 Gen 2 devices (2026-11-01): touchscreen
+pairing completed with matching comparison codes; single-device and paired
+one-minute sleep tests audibly faded output and paused the iPhone. Both timers
+were then cancelled to restore output. Android backup export and import preview
+were exercised on Echo 2; backend preference restoration and rejection of
+foreign-device pairing backups passed on both devices. The feature suite passed
+all 10 tests on Echo 2, including actual OpenSSL X25519 exchanges. Desktop tests
+cover clock wake/playback behavior, solo controls and malformed backup previews.
+A clock schedule crossing midnight and power-loss recovery have not received
+long-duration device testing.

@@ -12,6 +12,9 @@ import os
 import re
 from receiver import receiver_lock, restart_receiver
 import unicodedata
+from preferences import Preferences, validated
+from local_audio import set_output
+from pairing import Pairing
 import logging
 from logging.handlers import RotatingFileHandler
 from urllib.error import HTTPError
@@ -58,6 +61,85 @@ STATE_LOCK = threading.Lock()
 STATE_CACHE = {}
 LOG = logging.getLogger('echo-diagnostics')
 LOG.addHandler(logging.NullHandler())
+
+PREFERENCES=None
+PAIRING=None
+
+def commit_pair(values):
+    global peer_address,HEALTH
+    with PAIR_LOCK:
+        tmp=PAIR_PATH.with_suffix('.tmp');tmp.write_text(json.dumps(values));os.chmod(tmp,0o600);tmp.replace(PAIR_PATH)
+        PAIR.clear();PAIR.update(values)
+        peer_address=('',0);HEALTH=PeerHealth()
+
+def pause_sender():
+    state=read_state()
+    if state['active']:
+        _,_,player=interfaces();player.Pause(timeout=3)
+
+def feature_state():
+    if not PREFERENCES:return {}
+    return dict(PREFERENCES.snapshot(),pairing=PAIRING.status(),device_id=PAIRING.identity)
+
+def feature_worker():
+    while True:
+        PREFERENCES.tick()
+        try:PAIRING.advertise();PAIRING.poll()
+        except Exception as error:LOG.info('pairing service %s',type(error).__name__)
+        time.sleep(1)
+
+def feature_action(data):
+    action=data.get('action')
+    if action=='preferences':PREFERENCES.update(data['values'])
+    elif action=='sleep':
+        PREFERENCES.start(minutes=data.get('minutes'),pause=True)
+        warning=None
+        if data.get('both'):
+            try:
+                if 'sleep-v1' not in HEALTH.snapshot().get('features',[]):raise ValueError()
+                peer_call('sleep',deadline=PREFERENCES.snapshot()['sleep']['deadline'])
+            except Exception:warning='Timer started only here. Peer unavailable or needs an update.'
+        return dict(ok=True,warning=warning,**feature_state())
+    elif action=='sleep_cancel':
+        PREFERENCES.cancel()
+        if data.get('both'):
+            try:peer_call('sleep_cancel')
+            except Exception:return dict(ok=True,warning='Cancelled here. Cancel the timer on your peer too.',**feature_state())
+    elif action=='pair_open':PAIRING.open()
+    elif action=='pair_scan':return dict(ok=True,devices=PAIRING.scan())
+    elif action=='pair_start':PAIRING.start(data['id'])
+    elif action=='pair_confirm':PAIRING.confirm(data['code'])
+    elif action=='unpair':
+        warning=None
+        try:peer_call('unpair')
+        except Exception:warning='Removed here. Remove pairing on the other device too if it is offline.'
+        commit_pair({})
+        return dict(ok=True,warning=warning,**feature_state())
+    elif action=='backup':
+        backup=dict(format='echo-airplay-touch',version=1,device_id=PAIRING.identity,name=read_state()['name'],settings=PREFERENCES.snapshot()['settings'])
+        if data.get('include_pair'):
+            with PAIR_LOCK:backup['pair']=dict(PAIR)
+        return dict(ok=True,backup=backup)
+    elif action=='restore':
+        backup=data['backup']
+        if not isinstance(backup,dict) or backup.get('format')!='echo-airplay-touch' or backup.get('version')!=1:raise ValueError('Unsupported backup')
+        settings=validated(backup['settings']);name=backup['name']
+        renamed_config(CONFIG_PATH.read_text(),name)
+        pair=None
+        if data.get('include_pair') and 'pair' in backup:
+            if backup.get('device_id')!=PAIRING.identity:raise ValueError('Pairing can only be restored to its original device. Restore settings only instead.')
+            pair=backup['pair']
+            if not isinstance(pair,dict):raise ValueError('Invalid pairing backup')
+            if pair and (set(pair)-set(('self_service','peer_service','peer_name','secret','linked')) or pair.get('self_service')!=PAIRING.identity or not re.fullmatch('[0-9a-f]{64}',pair.get('secret','')) or type(pair.get('linked')) is not bool or not isinstance(pair.get('peer_service'),str) or not 1<=len(pair['peer_service'])<=100 or not isinstance(pair.get('peer_name',''),str) or len(pair.get('peer_name',''))>80):raise ValueError('Invalid pairing backup')
+        previous=PREFERENCES.snapshot()['settings']
+        PREFERENCES.update(settings)
+        try:rename_receiver(name)
+        except Exception:PREFERENCES.update(previous);raise
+        if pair is not None:commit_pair(pair)
+        return dict(ok=True,warning='Settings restored. Reselect this receiver in AirPlay if its name changed.',**feature_state())
+    else:return None
+    return dict(ok=True,**feature_state())
+
 
 def request_peer(address, request):
     data=json.dumps(request,separators=(',',':')).encode()
@@ -129,6 +211,12 @@ def peer_call(action, **values):
 def monitor_peer():
     group = None
     while True:
+        if not PAIR.get('secret'):
+            if group is not None:
+                try:group.Free(timeout=2)
+                except Exception:pass
+                group=None
+            time.sleep(2);continue
         try:
             group = maintain_pair_service(group)
         except Exception:
@@ -378,13 +466,25 @@ class PeerHandler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(payload)))
-        signature=hmac.new(PAIR['secret'].encode(),self.headers.get('X-Echo-Nonce','').encode()+b'\n'+payload,hashlib.sha256).hexdigest()
+        signature=hmac.new(getattr(self,'auth_secret',PAIR.get('secret','')).encode(),self.headers.get('X-Echo-Nonce','').encode()+b'\n'+payload,hashlib.sha256).hexdigest()
         self.send_header('X-Echo-Signature',signature)
         self.end_headers()
         self.wfile.write(payload)
     def do_GET(self):
         self.reply(403, {'error':'Forbidden'})
     def do_POST(self):
+        if self.path.startswith('/pair/'):
+            try:
+                length=int(self.headers.get('Content-Length','0'))
+                if not PAIRING or not 0<length<=4096:raise ValueError('Invalid pairing request')
+                data=json.loads(self.rfile.read(length))
+                if self.path=='/pair/hello':result=PAIRING.hello(data,self.client_address[0])
+                elif self.path=='/pair/confirm':result=PAIRING.accept(data)
+                else:raise ValueError('Unknown pairing request')
+                return self.reply(200,result)
+            except Exception:return self.reply(400,{'error':'Pairing unavailable. Open pairing on both screens.'})
+        self.auth_secret=PAIR.get('secret','')
+        if not self.auth_secret:return self.reply(403,{'error':'Unpaired'})
         self.connection.settimeout(4)
         try:
             length = int(self.headers.get('Content-Length', '0'))
@@ -404,16 +504,19 @@ class PeerHandler(BaseHTTPRequestHandler):
             request = json.loads(body)
             action = request.get('action')
             applied=True
-            if action in ('volume','link'):
+            if action in ('volume','link','sleep','sleep_cancel','unpair'):
                 if 'session' not in request:
                     return self.reply(409,{'error':'Update both receivers for reliable linking','protocol':2})
                 if action=='volume':
                     value=float(request['value'])
                     if not math.isfinite(value) or not 0<=value<=100:raise ValueError()
                     callback=lambda:set_volume(value)
-                else:
+                elif action=='link':
                     if not isinstance(request.get('enabled'),bool):raise ValueError()
                     callback=lambda:set_link(request['enabled'])
+                elif action=='sleep':callback=lambda:PREFERENCES.start(deadline=request['deadline'],pause=False)
+                elif action=='sleep_cancel':callback=lambda:PREFERENCES.cancel()
+                else:callback=lambda:commit_pair({})
                 applied=CONTROL_ORDER.apply(request,callback)
                 LOG.info('peer control action=%s applied=%s value=%s',action,applied,request.get('value'))
             elif action!='state':
@@ -424,7 +527,7 @@ class PeerHandler(BaseHTTPRequestHandler):
                 result.update(ready=True)
             except Exception:
                 result=dict(ready=False,linked=bool(PAIR.get('linked')))
-            self.reply(200,dict(result,protocol=2,applied=applied))
+            self.reply(200,dict(result,protocol=2,features=['sleep-v1','unpair-v1'],applied=applied))
         except (ValueError, KeyError, TypeError):
             self.reply(400, {'error':'Invalid request'})
         except Exception:
@@ -462,7 +565,7 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/api/session':
                 return self.reply(200, {'token': TOKEN})
             if path == '/api/state':
-                return self.reply(200, dict(read_state(), token=TOKEN))
+                return self.reply(200, dict(read_state(), token=TOKEN, **feature_state()))
             if path == '/api/art':
                 _, props, _ = interfaces()
                 metadata = props.Get(IFACE, 'Metadata', timeout=3)
@@ -481,10 +584,13 @@ class Handler(BaseHTTPRequestHandler):
         action = None
         try:
             length = int(self.headers.get('Content-Length', '0'))
-            if not 0 < length <= 1024:
+            if not 0 < length <= 65536:
                 return self.reply(400, {'error': 'Invalid request'})
             data = json.loads(self.rfile.read(length))
             action = data.get('action')
+            if PREFERENCES:
+                result=feature_action(data)
+                if result is not None:return self.reply(200,result)
             if action == 'rename':
                 rename_receiver(data.get('value'))
                 return self.reply(200, {'ok': True})
@@ -544,10 +650,12 @@ if __name__ == '__main__':
     os.chmod(log_path,0o600)
     handler.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
     LOG.addHandler(handler);LOG.setLevel(logging.INFO)
+    PREFERENCES=Preferences(ROOT/'preferences.json',set_output,pause_sender)
+    PAIRING=Pairing(ROOT/'identity.json',PAIR.get('self_service'),lambda:STATE_CACHE.get('name','Echo AirPlay'),lambda:bool(PAIR.get('secret')),commit_pair)
+    threading.Thread(target=feature_worker,daemon=True).start()
     threading.Thread(target=sample_state,daemon=True).start()
     threading.Thread(target=metadata_events,daemon=True).start()
-    if PAIR.get('secret'):
-        peer_server = HTTPServer(('0.0.0.0', 8766), PeerHandler)
-        threading.Thread(target=peer_server.serve_forever, daemon=True).start()
-        threading.Thread(target=monitor_peer, daemon=True).start()
+    peer_server = HTTPServer(('0.0.0.0', 8766), PeerHandler)
+    threading.Thread(target=peer_server.serve_forever, daemon=True).start()
+    threading.Thread(target=monitor_peer, daemon=True).start()
     HTTPServer(('127.0.0.1', 8765), Handler).serve_forever()
