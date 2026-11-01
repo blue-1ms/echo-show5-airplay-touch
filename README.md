@@ -14,13 +14,29 @@ an audio driver. The existing terminal UI is independent of this companion.
 
 **One Echo is enough. Multiple devices are optional.**
 
-## On a real Echo
+## Music and Home on a real Echo
 
-![Echo Show 5 Gen 2 playing Apple Music over AirPlay](assets/echo-airplay-playing.png)
+### Music: AirPlay playback
 
-Actual device screenshot: original album art, playback controls, progress and
-volume. The optional peer was offline in this capture; a second Echo is not
-required. Album artwork and track metadata belong to their respective owners.
+![Echo Show 5 Gen 2 Music page with artwork, playback controls and Music/Home navigation](assets/echo-music-home-navigation.png)
+
+Actual device screenshot of the version 1.3 touchscreen: original album art,
+playback controls, progress, volume and the persistent Music / Home buttons.
+The linked peer shown here is optional; **one Echo works independently**.
+Album artwork and track metadata belong to their respective owners.
+
+### Home: optional Home Assistant dashboard
+
+![Echo Show 5 Gen 2 Home page showing Home Assistant grouped lights and brightness controls](assets/echo-home-lights.png)
+
+Actual device screenshot of a custom Home Assistant dashboard, with grouped
+lights, brightness controls, and tabs for outlets and temperature/humidity.
+Tap Music to return to playback controls; switching pages does not stop AirPlay.
+
+**Home Assistant is optional and runs on your own server.** The room names,
+entities and dashboard shown are an example, not a bundled configuration.
+Connect your own dashboard through Setup, or leave it unconfigured for music-only
+use. See [Home Assistant setup](CONFIGURATION.md#optional-home-assistant-panel).
 
 ## Music only or music plus home controls
 
