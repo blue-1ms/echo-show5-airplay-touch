@@ -77,9 +77,9 @@ else
 fi
 mkdir -p "$R/opt/echo-touch" "$R/tmp/echo-install/installer"
 cp "$S/start-receiver.sh" "$R/tmp/echo-install/installer/start-receiver.sh"
-cp "$S/receiver.py" "$S/server.py" "$S/index.html" "$S/install.sh" "$S/start-touch.sh" "$R/tmp/echo-install/"
+cp "$S/reliability.py" "$S/receiver.py" "$S/server.py" "$S/index.html" "$S/install.sh" "$S/start-touch.sh" "$R/tmp/echo-install/"
 if [ "$mode" = fresh ]; then
- cp "$S/receiver.py" "$S/server.py" "$S/index.html" "$R/opt/echo-touch/"
+ cp "$S/reliability.py" "$S/receiver.py" "$S/server.py" "$S/index.html" "$R/opt/echo-touch/"
  cp "$S/start-touch.sh" "$R/root/start-touch.sh"
 fi
 /data/local/echo-start.sh

@@ -137,7 +137,7 @@ and MPRIS enabled. The Python process must be able to access the receiver's
 system D-Bus. The Android app needs only network permission for loopback; it
 does not request root.
 
-1. Copy `receiver.py`, `server.py` and `index.html` into `/opt/echo-touch/` inside the environment
+1. Copy `reliability.py`, `receiver.py`, `server.py` and `index.html` into `/opt/echo-touch/` inside the environment
    where Shairport's system D-Bus is available. For touchscreen renaming, use the supplied
    `installer/start-receiver.sh` as the receiver startup script so it shares the lifecycle lock.
 2. Configure Shairport's cover-art cache as `/run/echo-airplay/coverart`, or set
@@ -272,7 +272,7 @@ foreground or forcibly restart a running audio process. Other installations
 should use their own service manager. Process recovery does not guarantee
 detection of an audio driver that is alive but unresponsive.
 
-To roll back a UI/backend update, restore `receiver.py`, `server.py`, `index.html` and
+To roll back a UI/backend update, restore `reliability.py`, `receiver.py`, `server.py`, `index.html` and
 `start-touch.sh` and `/root/start-receiver.sh` from the backup directory printed by the installer, then restart
 only the touch backend. Do not replace private pairing settings with examples.
 
@@ -289,3 +289,10 @@ Volume pairing uses stable internal identifiers, so renaming does not require pa
 Receiver lifecycle updates also install the matching `installer/start-receiver.sh` as `/root/start-receiver.sh`. Keep the helper and startup script from the same version together. Both touchscreen renaming and watchdog startup use the same lock and verify the actual executable and chroot, including receivers started with an absolute executable path.
 
 Validated on both tested Echo units: rename and restore, individual audible playback, synchronized dual playback, and touchscreen volume changes in both directions. The lifecycle checks include five concurrent startup requests and a 105-second watchdog observation per device.
+
+
+### Playback and peer reliability update
+
+Pause/resume display now uses sender playback-rate metadata as well as explicit stream events, fixing the tested iPhone NetEase Cloud Music case where audio paused but the GUI remained on `Now playing`. Peer connectivity and receiver readiness are separate, working addresses survive discovery failures, and linked controls carry sequence numbers and short expiry windows. Update both paired devices together; single-device use remains independent.
+
+The user confirmed Apple Music and NetEase playback/status checks, two-device volume linking, and recovery after a 26-second companion-service interruption without interrupting music. Captured PulseAudio and Android gain remained constant. A separate final network sample completed 44 authenticated probes without failure over approximately 107 seconds. The user ended observation and accepted the update before the planned 30-minute soak and mono-signal comparison; those longer checks were **not completed**. The intermittent loudness symptom was not reproduced during the captured interval, so its original cause is not claimed as proven.

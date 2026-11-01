@@ -135,3 +135,14 @@ Volume pairing uses stable internal identifiers, so renaming does not require pa
 Keep `receiver.py` beside `server.py`. The supplied startup script calls this helper instead of relying on `pgrep` command-name matching. It uses `/run/echo-airplay/receiver.lock` for both watchdog startup and the entire rename/rollback operation. Do not add another independent Shairport launcher. A receiver that does not stop within five seconds is reported as an error; the helper does not start a competing process or force-kill it.
 
 A successful rename preserves pairing configuration and requests the previous receiver volume after restart. The AirPlay sender may set its own volume when reconnecting. If a restart fails, the previous configuration is restored and recovery is attempted. Reconnect from the AirPlay picker after a rename; service readiness alone does not confirm audible playback.
+
+
+### Peer recovery and playback evidence
+
+Update both paired receivers together. Protocol 2 retains authenticated legacy state requests, but reliable linked controls require protocol 2 on both ends. Controls include a session identifier, increasing sequence number and five-second validity window. Duplicates and older requests are not applied twice; controls are never automatically queued for a disconnected receiver. Response signatures are checked for protocol 2 peers.
+
+A failed probe shows `Reconnecting`. `Offline` requires at least three consecutive failures and more than 15 seconds since the last success. Receiver readiness is separate from connectivity: a reachable companion can report that Shairport is still restarting. Successful addresses are reused; discovery failure does not discard a working cached address. New addresses become cached only after a successful probe.
+
+The backend samples receiver state independently of HTTP requests. Sender playback-rate metadata, explicit stream pause/resume events and MPRIS state feed a shared display state. A rate of zero reports pause even if MPRIS is stale. A flush, quiet music or missing progress alone does not mean pause. Ambiguous active sessions show `Receiving audio`; unknown playback does not trigger automatic dimming. The companion consumes the existing `/tmp/shairport-sync-metadata` FIFO: do not run another consumer of that FIFO at the same time.
+
+Internal diagnostics are bounded to four 256 KiB files under `/run/echo-airplay/diagnostics.log`. They record playback evidence, raw AirPlay volume, displayed volume, link actions and error categories, without pairing keys or authentication tokens. The optional Android-root `installer/observe-audio.sh` records PulseAudio and Android gain for up to one hour, using at most two approximately 512 KiB files in `/data/local/tmp/echo-audio-observation.log`. It does not change volume or start at boot. Diagnostic files are private and are not part of the repository.

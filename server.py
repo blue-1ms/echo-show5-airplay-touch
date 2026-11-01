@@ -12,6 +12,10 @@ import os
 import re
 from receiver import receiver_lock, restart_receiver
 import unicodedata
+import logging
+from logging.handlers import RotatingFileHandler
+from urllib.error import HTTPError
+from reliability import PeerHealth, OrderedControls, PlaybackEvidence
 from urllib.request import Request, urlopen, ProxyHandler, build_opener
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
@@ -44,28 +48,83 @@ def set_link(enabled):
         os.chmod(tmp, 0o600)
         tmp.replace(PAIR_PATH)
 
-def peer_call(action, **values):
-    global peer_address
-    if not PAIR.get('secret'):
-        raise RuntimeError('Unpaired')
-    if time.monotonic() - peer_address[1] > 30:
-        avahi = dbus.Interface(system_bus().get_object('org.freedesktop.Avahi', '/'), 'org.freedesktop.Avahi.Server')
-        result = avahi.ResolveService(-1, 0, PAIR['peer_service'], '_echo-volume._tcp', 'local', 0, 0, timeout=3)
-        peer_address = (str(result[7]), time.monotonic())
-    data = json.dumps(dict(action=action, **values), separators=(',', ':')).encode()
-    timestamp = str(int(time.time()))
-    nonce = secrets.token_hex(16)
-    signature = hmac.new(PAIR['secret'].encode(), timestamp.encode()+b'\n'+nonce.encode()+b'\n'+data, hashlib.sha256).hexdigest()
-    req = Request('http://' + peer_address[0] + ':8766/peer', data=data, headers={'Content-Type':'application/json', 'X-Echo-Time':timestamp, 'X-Echo-Nonce':nonce, 'X-Echo-Signature':signature})
-    try:
-        with build_opener(ProxyHandler({})).open(req, timeout=3) as response:
-            result = json.load(response)
-        PEER.update(result, online=True)
+HEALTH = PeerHealth()
+OUTBOUND_LOCK = threading.Lock()
+CONTROL_ORDER = OrderedControls()
+CONTROL_SESSION = secrets.token_hex(16)
+control_sequence = 0
+PLAYBACK = PlaybackEvidence()
+STATE_LOCK = threading.Lock()
+STATE_CACHE = {}
+LOG = logging.getLogger('echo-diagnostics')
+LOG.addHandler(logging.NullHandler())
+
+def request_peer(address, request):
+    data=json.dumps(request,separators=(',',':')).encode()
+    stamp=str(int(time.time()));nonce=secrets.token_hex(16)
+    signature=hmac.new(PAIR['secret'].encode(),stamp.encode()+b'\n'+nonce.encode()+b'\n'+data,hashlib.sha256).hexdigest()
+    req=Request('http://'+address+':8766/peer',data=data,headers={'Content-Type':'application/json','X-Echo-Time':stamp,'X-Echo-Nonce':nonce,'X-Echo-Signature':signature})
+    with build_opener(ProxyHandler({})).open(req,timeout=3) as response:
+        payload=response.read(16385)
+        if len(payload)>16384:raise ValueError('Oversized response')
+        result=json.loads(payload)
+        if result.get('protocol',0)>=2:
+            expected=hmac.new(PAIR['secret'].encode(),nonce.encode()+b'\n'+payload,hashlib.sha256).hexdigest()
+            if not hmac.compare_digest(expected,response.headers.get('X-Echo-Signature','')):
+                raise PermissionError('Invalid peer response signature')
+        elif request['action']!='state':
+            raise PermissionError('Peer protocol upgrade required')
         return result
-    except Exception:
-        peer_address = ('', 0)
-        PEER['online'] = False
-        raise
+
+def peer_call(action, **values):
+    global peer_address, control_sequence
+    with OUTBOUND_LOCK:
+        if not PAIR.get('secret'):raise RuntimeError('Unpaired')
+        if action!='state' and HEALTH.snapshot().get('protocol',0)<2:
+            raise RuntimeError('Update both receivers to use reliable volume linking.')
+        cached,checked=peer_address
+        address=cached
+        if not address or time.monotonic()-checked>30:
+            try:
+                avahi=dbus.Interface(system_bus().get_object('org.freedesktop.Avahi','/'),'org.freedesktop.Avahi.Server')
+                result=avahi.ResolveService(-1,0,PAIR['peer_service'],'_echo-volume._tcp','local',0,0,timeout=2)
+                address=str(result[7])
+            except Exception as error:
+                LOG.info('peer discovery failed type=%s cached_address=%s',type(error).__name__,bool(cached))
+                if not cached:
+                    HEALTH.failure('discovery')
+                    raise
+        request=dict(action=action,**values)
+        if action!='state':
+            control_sequence+=1
+            request.update(session=CONTROL_SESSION,seq=control_sequence,issued=time.time())
+        candidates=[address]
+        # Only a read-only health probe may try a second address. Controls are
+        # never queued or automatically replayed after an uncertain result.
+        if action=='state' and cached and cached!=address:candidates.append(cached)
+        last_error=None
+        for candidate in candidates:
+            try:
+                result=request_peer(candidate,request)
+                peer_address=(candidate,time.monotonic())
+                HEALTH.success(result);PEER.update(result,online=True)
+                if action!='state' and not result.get('ready',True):
+                    raise RuntimeError('Peer receiver reconnecting')
+                return result
+            except RuntimeError:raise
+            except Exception as error:
+                last_error=error
+                LOG.info('peer attempt failed action=%s type=%s detail=%s',action,type(error).__name__,str(error)[:160])
+                if isinstance(error,(PermissionError,HTTPError,ValueError)):
+                    break
+        if isinstance(last_error,HTTPError):
+            kind='authentication' if last_error.code in (401,403) else ('receiver' if last_error.code==503 else 'protocol')
+        else:
+            kind='authentication' if isinstance(last_error,PermissionError) else ('protocol' if isinstance(last_error,ValueError) else 'network')
+        HEALTH.failure(kind)
+        peer_address=(cached,0)
+        raise last_error
+
 
 def monitor_peer():
     group = None
@@ -77,7 +136,7 @@ def monitor_peer():
         try:
             peer_call('state')
         except Exception:
-            PEER['online'] = False
+            pass
         time.sleep(5)
 
 def maintain_pair_service(group):
@@ -131,27 +190,96 @@ def artwork_path(url):
         return None
     return path
 
-def read_state():
+def collect_state():
     core, props, _ = interfaces()
     c = core.GetAll('org.gnome.ShairportSync', timeout=3)
     p = props.GetAll(IFACE, timeout=3)
     m = p.get('Metadata', {})
+    try:
+        info=core.Get('org.gnome.ShairportSync.Client','NowPlayingInformation',timeout=1)
+    except Exception:
+        info={}
+    effective, paused_position, evidence=PLAYBACK.resolve(bool(c.get('Active',False)),str(p.get('PlaybackStatus','')),info,str(m.get('xesam:title','')))
+    peer=HEALTH.snapshot()
+    try:
+        raw_volume=float(core.Get('org.gnome.ShairportSync.RemoteControl','AirplayVolume',timeout=1))
+    except Exception:
+        raw_volume=None
     active = bool(c.get('Active', False))
     art = artwork_path(m.get('mpris:artUrl', '')) if active else None
     volume = max(0, min(100, round(float(p.get('Volume', 0)) * 100)))
     duration = max(0, float(m.get('mpris:length', 0)) / 1e6)
     position = max(0, float(p.get('Position', 0)) / 1e6)
-    return dict(ok=True, name=str(c.get('ServiceName', 'Echo AirPlay')), active=active,
-        state=str(p.get('PlaybackStatus', 'Stopped')) if active else 'Stopped',
+    if paused_position is not None:
+        try:
+            if math.isfinite(float(paused_position)):position=max(0,float(paused_position))
+        except (ValueError,TypeError):pass
+    return dict(ok=True, raw_volume=raw_volume, state_source=evidence, peer_status=peer['status'], peer_error=peer['error'], peer_ready=peer.get('ready',False), peer_protocol=peer.get('protocol',0), name=str(c.get('ServiceName', 'Echo AirPlay')), active=active,
+        state=effective,
         title=str(m.get('xesam:title', '')) if active else '',
         artist=' · '.join(map(str, m.get('xesam:artist', []))) if active else '',
         album=str(m.get('xesam:album', '')) if active else '',
         duration=duration if active else 0, position=min(position, duration) if duration else position,
         volume=volume, art=hashlib.sha256(str(art).encode()).hexdigest()[:20] if art else '',
-        can_toggle=active and bool(p.get('CanControl')) and bool(p.get('CanPause') if p.get('PlaybackStatus') == 'Playing' else p.get('CanPlay')),
+        can_toggle=active and effective in ('Playing','Paused') and bool(p.get('CanControl')) and bool(p.get('CanPause') if effective == 'Playing' else p.get('CanPlay')),
         can_next=active and bool(p.get('CanGoNext')), can_previous=active and bool(p.get('CanGoPrevious')),
         paired=bool(PAIR.get('secret')), linked=bool(PAIR.get('linked')),
-        peer_online=bool(PEER.get('online')), peer_volume=PEER.get('volume'), peer_name=PEER.get('name') or PAIR.get('peer_name', ''))
+        peer_online=peer['online'], peer_volume=peer.get('volume'), peer_name=peer.get('name') or PAIR.get('peer_name', ''))
+
+def read_state():
+    with STATE_LOCK:
+        cached=dict(STATE_CACHE)
+    if cached:
+        if time.monotonic()-cached.pop('_sampled')>3:
+            raise RuntimeError('Receiver state stale')
+        peer=HEALTH.snapshot()
+        cached.update(paired=bool(PAIR.get('secret')),linked=bool(PAIR.get('linked')),peer_status=peer['status'],peer_error=peer['error'],peer_ready=peer.get('ready',False),peer_protocol=peer.get('protocol',0),peer_online=peer['online'],peer_volume=peer.get('volume'),peer_name=peer.get('name') or PAIR.get('peer_name',''))
+        return cached
+    return collect_state()
+
+def sample_state():
+    previous=None
+    while True:
+        try:
+            state=collect_state()
+            observed={k:state[k] for k in ('raw_volume','volume','state','state_source','peer_status','peer_error')}
+            if observed!=previous:
+                LOG.info('state %s',json.dumps(observed))
+                previous=observed
+            with STATE_LOCK:
+                STATE_CACHE.clear();STATE_CACHE.update(state,_sampled=time.monotonic())
+        except Exception as error:
+            if previous!='unavailable':LOG.info('receiver unavailable %s',type(error).__name__)
+            previous='unavailable'
+        time.sleep(.5)
+
+def metadata_events():
+    # One non-blocking consumer of the existing Shairport metadata FIFO.
+    import select
+    path='/tmp/shairport-sync-metadata'
+    while True:
+        try:
+            fd=os.open(path,os.O_RDONLY|os.O_NONBLOCK)
+            try:
+                buffer=b''
+                while True:
+                    ready,_,_=select.select([fd],[],[],1)
+                    if not ready:continue
+                    data=os.read(fd,65536)
+                    if not data:time.sleep(.2);continue
+                    buffer=(buffer+data)[-131072:]
+                    while b'</item>' in buffer:
+                        item,buffer=buffer.split(b'</item>',1)
+                        kind=re.search(rb'<type>([0-9a-f]+)</type>',item)
+                        code=re.search(rb'<code>([0-9a-f]+)</code>',item)
+                        if kind and kind.group(1)==b'73736e63' and code:
+                            event=bytes.fromhex(code.group(1).decode()).decode(errors='replace')
+                            if event in ('paus','prsm','pbeg','pend'):
+                                PLAYBACK.event_received(event)
+                                LOG.info('stream event=%s',event)
+            finally:os.close(fd)
+        except OSError:time.sleep(2)
+
 
 CONFIG_PATH = Path('/etc/shairport-sync.conf')
 
@@ -250,6 +378,8 @@ class PeerHandler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(payload)))
+        signature=hmac.new(PAIR['secret'].encode(),self.headers.get('X-Echo-Nonce','').encode()+b'\n'+payload,hashlib.sha256).hexdigest()
+        self.send_header('X-Echo-Signature',signature)
         self.end_headers()
         self.wfile.write(payload)
     def do_GET(self):
@@ -265,7 +395,7 @@ class PeerHandler(BaseHTTPRequestHandler):
             nonce = self.headers.get('X-Echo-Nonce', '')
             expected = hmac.new(PAIR['secret'].encode(), stamp.encode()+b'\n'+nonce.encode()+b'\n'+body, hashlib.sha256).hexdigest()
             now = time.time()
-            if abs(now - float(stamp)) > 30 or not nonce or len(nonce) > 64 or not hmac.compare_digest(expected, self.headers.get('X-Echo-Signature', '')):
+            if not math.isfinite(float(stamp)) or abs(now - float(stamp)) > 30 or not nonce or len(nonce) > 64 or not hmac.compare_digest(expected, self.headers.get('X-Echo-Signature', '')):
                 return self.reply(403, {'error':'Forbidden'})
             self.nonces = {key:expiry for key,expiry in self.nonces.items() if expiry > now}
             if nonce in self.nonces:
@@ -273,16 +403,28 @@ class PeerHandler(BaseHTTPRequestHandler):
             type(self).nonces = {**self.nonces, nonce:now+60}
             request = json.loads(body)
             action = request.get('action')
-            if action == 'volume':
-                set_volume(request['value'])
-            elif action == 'link':
-                if not isinstance(request.get('enabled'), bool):
-                    raise ValueError()
-                set_link(request['enabled'])
-            elif action != 'state':
-                return self.reply(400, {'error':'Invalid action'})
-            state = read_state()
-            self.reply(200, {key:state[key] for key in ('name','volume','active','linked')})
+            applied=True
+            if action in ('volume','link'):
+                if 'session' not in request:
+                    return self.reply(409,{'error':'Update both receivers for reliable linking','protocol':2})
+                if action=='volume':
+                    value=float(request['value'])
+                    if not math.isfinite(value) or not 0<=value<=100:raise ValueError()
+                    callback=lambda:set_volume(value)
+                else:
+                    if not isinstance(request.get('enabled'),bool):raise ValueError()
+                    callback=lambda:set_link(request['enabled'])
+                applied=CONTROL_ORDER.apply(request,callback)
+                LOG.info('peer control action=%s applied=%s value=%s',action,applied,request.get('value'))
+            elif action!='state':
+                return self.reply(400,{'error':'Invalid action'})
+            try:
+                state=read_state()
+                result={key:state[key] for key in ('name','volume','active','linked')}
+                result.update(ready=True)
+            except Exception:
+                result=dict(ready=False,linked=bool(PAIR.get('linked')))
+            self.reply(200,dict(result,protocol=2,applied=applied))
         except (ValueError, KeyError, TypeError):
             self.reply(400, {'error':'Invalid request'})
         except Exception:
@@ -353,12 +495,15 @@ class Handler(BaseHTTPRequestHandler):
                 value = float(data['value'])
                 if not math.isfinite(value) or not 0 <= value <= 100:
                     return self.reply(400, {'error': 'Invalid volume'})
-                set_volume(value)
+                with CONTROL_ORDER.lock:
+                    set_volume(value)
+                LOG.info('touch volume value=%s linked=%s',value,bool(PAIR.get('linked')))
                 if PAIR.get('linked'):
                     try:
                         peer_call('volume', value=value)
                     except Exception:
-                        return self.reply(200, {'ok':True, 'warning':'Only this device changed volume. Peer offline; check its power and Wi-Fi.'})
+                        reason='Update both receivers for reliable linking.' if HEALTH.snapshot().get('protocol',0)<2 else 'Peer reconnecting or unavailable.'
+                        return self.reply(200, {'ok':True, 'warning':'Only this device changed volume. '+reason})
             elif action == 'link' and PAIR.get('secret'):
                 enabled = data.get('enabled')
                 if not isinstance(enabled, bool):
@@ -370,6 +515,8 @@ class Handler(BaseHTTPRequestHandler):
                     except Exception:
                         return self.reply(200, {'ok':True, 'warning':'Link disabled here. Peer offline; disable linking on that device too.'})
                     return self.reply(200, {'ok':True})
+                if HEALTH.snapshot().get('protocol',0)<2:
+                    return self.reply(409, {'error':'Update both receivers to use reliable volume linking.'})
                 # Align to the quieter receiver when linking, avoiding a surprise increase.
                 result = peer_call('link', enabled=enabled)
                 set_link(enabled)
@@ -390,6 +537,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(503, {'error': 'Rename failed. Previous name restored; receiver reconnecting.' if action == 'rename' else 'Action failed. Please try again.'})
 
 if __name__ == '__main__':
+    os.umask(0o077)
+    log_path=Path('/run/echo-airplay/diagnostics.log')
+    log_path.parent.mkdir(parents=True,exist_ok=True)
+    handler=RotatingFileHandler(log_path,maxBytes=262144,backupCount=3)
+    os.chmod(log_path,0o600)
+    handler.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
+    LOG.addHandler(handler);LOG.setLevel(logging.INFO)
+    threading.Thread(target=sample_state,daemon=True).start()
+    threading.Thread(target=metadata_events,daemon=True).start()
     if PAIR.get('secret'):
         peer_server = HTTPServer(('0.0.0.0', 8766), PeerHandler)
         threading.Thread(target=peer_server.serve_forever, daemon=True).start()

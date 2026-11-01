@@ -63,3 +63,12 @@ assert.equal(elements.get('night').hidden,true,'Auto dim can be disabled');
  assert.deepEqual(sent,[20,45],'Send the latest queued volume, not intermediate requests');
  console.log('PASS: auto dim, playback wake, manual dim, disabled auto dim, latest-volume queue');
 })().catch(e=>{console.error(e);process.exitCode=1});
+
+render({...single,paired:true,linked:true,peer_status:'reconnecting',peer_online:false});
+assert.match(elements.get('hint').textContent,/Reconnecting/);
+render({...single,paired:true,linked:true,peer_status:'online',peer_online:true,peer_ready:false});
+assert.match(elements.get('hint').textContent,/receiver reconnecting/);
+render({...single,state:'Unknown',can_toggle:false});
+assert.equal(elements.get('state').textContent,'Receiving audio');
+assert.equal(elements.get('toggle').disabled,true);
+console.log('PASS: peer recovery vs receiver readiness and unconfirmed playback');
