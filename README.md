@@ -1,4 +1,4 @@
-# echo-show5-airplay-touch
+# Echo Show 5 AirPlay Touch — Music & Optional Home Assistant
 
 An optional touchscreen frontend for an **existing** Shairport Sync receiver.
 One device is enough. Playback, pause, track navigation, original album artwork,
