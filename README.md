@@ -137,8 +137,9 @@ and MPRIS enabled. The Python process must be able to access the receiver's
 system D-Bus. The Android app needs only network permission for loopback; it
 does not request root.
 
-1. Copy `server.py` and `index.html` into `/opt/echo-touch/` inside the environment
-   where Shairport's system D-Bus is available.
+1. Copy `receiver.py`, `server.py` and `index.html` into `/opt/echo-touch/` inside the environment
+   where Shairport's system D-Bus is available. For touchscreen renaming, use the supplied
+   `installer/start-receiver.sh` as the receiver startup script so it shares the lifecycle lock.
 2. Configure Shairport's cover-art cache as `/run/echo-airplay/coverart`, or set
    `SHAIRPORT_TOUCH_ART_DIR` to the actual cover directory when starting Python.
 3. Run `python3 /opt/echo-touch/server.py`.
@@ -271,8 +272,8 @@ foreground or forcibly restart a running audio process. Other installations
 should use their own service manager. Process recovery does not guarantee
 detection of an audio driver that is alive but unresponsive.
 
-To roll back a UI/backend update, restore `server.py`, `index.html` and
-`start-touch.sh` from the backup directory printed by the installer, then restart
+To roll back a UI/backend update, restore `receiver.py`, `server.py`, `index.html` and
+`start-touch.sh` and `/root/start-receiver.sh` from the backup directory printed by the installer, then restart
 only the touch backend. Do not replace private pairing settings with examples.
 
 Validation on Echo 1 included an Android reboot: the receiver and touchscreen
@@ -284,3 +285,7 @@ software reboot, not a physical power-loss test.
 Open **Help and settings (•••) → AirPlay name**, enter a name such as `Living Room`, then tap **Save name**. Saving restarts this receiver and interrupts its playback; select the new name again in your iPhone or iPad AirPlay picker. The name persists across restarts. Each device can be renamed independently, including a single unpaired receiver. Use distinct names (up to 50 UTF-8 bytes; no control characters or `%` substitutions). The Android device name and home-screen app label are unchanged.
 
 Volume pairing uses stable internal identifiers, so renaming does not require pairing again. Updated peers display the new name after their next successful status refresh.
+
+Receiver lifecycle updates also install the matching `installer/start-receiver.sh` as `/root/start-receiver.sh`. Keep the helper and startup script from the same version together. Both touchscreen renaming and watchdog startup use the same lock and verify the actual executable and chroot, including receivers started with an absolute executable path.
+
+Validated on both tested Echo units: rename and restore, individual audible playback, synchronized dual playback, and touchscreen volume changes in both directions. The lifecycle checks include five concurrent startup requests and a 105-second watchdog observation per device.

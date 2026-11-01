@@ -75,10 +75,11 @@ elif [ "$mode" = upgrade ]; then
 else
  echo 'Invalid mode'; exit 1
 fi
-mkdir -p "$R/opt/echo-touch" "$R/tmp/echo-install"
-cp "$S/server.py" "$S/index.html" "$S/install.sh" "$S/start-touch.sh" "$R/tmp/echo-install/"
+mkdir -p "$R/opt/echo-touch" "$R/tmp/echo-install/installer"
+cp "$S/start-receiver.sh" "$R/tmp/echo-install/installer/start-receiver.sh"
+cp "$S/receiver.py" "$S/server.py" "$S/index.html" "$S/install.sh" "$S/start-touch.sh" "$R/tmp/echo-install/"
 if [ "$mode" = fresh ]; then
- cp "$S/server.py" "$S/index.html" "$R/opt/echo-touch/"
+ cp "$S/receiver.py" "$S/server.py" "$S/index.html" "$R/opt/echo-touch/"
  cp "$S/start-touch.sh" "$R/root/start-touch.sh"
 fi
 /data/local/echo-start.sh

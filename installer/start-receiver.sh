@@ -13,7 +13,5 @@ if ! pgrep -x nqptp >/dev/null; then
  nqptp > /run/echo-airplay/nqptp.log 2>&1 &
 fi
 sleep 2
-if ! pgrep -x shairport-sync >/dev/null; then
- shairport-sync -v > /run/echo-airplay/shairport-sync.log 2>&1 &
-fi
+/usr/bin/python3 /opt/echo-touch/receiver.py
 /bin/sh /root/start-touch.sh

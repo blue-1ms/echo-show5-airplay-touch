@@ -10,8 +10,7 @@ import threading
 import time
 import os
 import re
-import signal
-import subprocess
+from receiver import receiver_lock, restart_receiver
 import unicodedata
 from urllib.request import Request, urlopen, ProxyHandler, build_opener
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -190,35 +189,11 @@ def renamed_config(text, value):
     escaped = name.replace('\\', '\\\\').replace('"', '\\"')
     return text[:val.start()] + '"' + escaped + '"' + text[val.end():], name
 
-def receiver_pids():
-    result = []
-    for item in Path('/proc').iterdir():
-        if not item.name.isdigit():
-            continue
-        try:
-            if (item / 'exe').resolve().name == 'shairport-sync' and os.path.samefile(item / 'root', '/'):
-                result.append(int(item.name))
-        except (OSError, RuntimeError):
-            pass
-    return result
-
-def restart_receiver():
-    for pid in receiver_pids():
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except ProcessLookupError:
-            pass
-    for _ in range(30):
-        if not receiver_pids():
-            break
-        time.sleep(.1)
-    else:
-        raise RuntimeError('Receiver did not stop')
-    with open('/run/echo-airplay/shairport-sync.log', 'ab') as log:
-        subprocess.Popen(['/usr/local/bin/shairport-sync', '-v'], stdout=log,
-                         stderr=log, start_new_session=True)
-
 def rename_receiver(value):
+    with receiver_lock():
+        _rename_receiver(value)
+
+def _rename_receiver(value):
     original = CONFIG_PATH.read_text(encoding='utf-8')
     updated, name = renamed_config(original, value)
     if updated == original:
@@ -228,6 +203,8 @@ def rename_receiver(value):
         tmp.write_text(content, encoding='utf-8')
         os.chmod(tmp, CONFIG_PATH.stat().st_mode & 0o777)
         tmp.replace(CONFIG_PATH)
+    _, old_props, _ = interfaces()
+    old_volume = float(old_props.Get(IFACE, 'Volume', timeout=2))
     backup = CONFIG_PATH.with_suffix('.before-rename')
     backup.write_text(original, encoding='utf-8')
     os.chmod(backup, 0o600)
@@ -238,6 +215,8 @@ def rename_receiver(value):
             try:
                 core, _, _ = interfaces()
                 if str(core.Get('org.gnome.ShairportSync', 'ServiceName', timeout=.5)) == name:
+                    _, props, _ = interfaces()
+                    props.Set(IFACE, 'Volume', dbus.Double(old_volume), timeout=2)
                     return
             except Exception:
                 pass

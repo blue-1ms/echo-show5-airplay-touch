@@ -129,3 +129,9 @@ startup. The Echo boot hook removes that stale PID file only when no actual
 Open **Help and settings (•••) → AirPlay name**, enter a name such as `Living Room`, then tap **Save name**. Saving restarts this receiver and interrupts its playback; select the new name again in your iPhone or iPad AirPlay picker. The name persists across restarts. Each device can be renamed independently, including a single unpaired receiver. Use distinct names (up to 50 UTF-8 bytes; no control characters or `%` substitutions). The Android device name and home-screen app label are unchanged.
 
 Volume pairing uses stable internal identifiers, so renaming does not require pairing again. Updated peers display the new name after their next successful status refresh.
+
+### Receiver lifecycle and rename recovery
+
+Keep `receiver.py` beside `server.py`. The supplied startup script calls this helper instead of relying on `pgrep` command-name matching. It uses `/run/echo-airplay/receiver.lock` for both watchdog startup and the entire rename/rollback operation. Do not add another independent Shairport launcher. A receiver that does not stop within five seconds is reported as an error; the helper does not start a competing process or force-kill it.
+
+A successful rename preserves pairing configuration and requests the previous receiver volume after restart. The AirPlay sender may set its own volume when reconnecting. If a restart fails, the previous configuration is restored and recovery is attempted. Reconnect from the AirPlay picker after a rename; service readiness alone does not confirm audible playback.

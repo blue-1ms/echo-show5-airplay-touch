@@ -6,6 +6,11 @@ from unittest.mock import Mock, patch
 from test_discovery import server
 
 class RenameTests(unittest.TestCase):
+    def setUp(self):
+        lock = patch.object(server, 'receiver_lock')
+        lock.start()
+        self.addCleanup(lock.stop)
+
     source = '# general = { name = "Example"; };\ngeneral = { name = "Echo 2"; interpolation = "vernier"; };\nmetadata = { name = "Keep"; };'
 
     def test_changes_only_actual_name_and_escapes_strings(self):
@@ -31,10 +36,13 @@ class RenameTests(unittest.TestCase):
             config.write_text(self.source, encoding='utf-8')
             core = Mock()
             core.Get.return_value = 'Living Room'
-            with patch.object(server, 'CONFIG_PATH', config), patch.object(server, 'restart_receiver') as restart, patch.object(server, 'interfaces', return_value=(core, None, None)):
+            props = Mock()
+            props.Get.return_value = .4
+            with patch.object(server, 'CONFIG_PATH', config), patch.object(server, 'restart_receiver') as restart, patch.object(server, 'interfaces', return_value=(core, props, None)):
                 server.rename_receiver('Living Room')
                 self.assertIn('name = "Living Room"', config.read_text())
                 restart.assert_called_once()
+                props.Set.assert_called_once()
                 restart.reset_mock()
                 server.rename_receiver('Living Room')
                 restart.assert_not_called()

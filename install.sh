@@ -8,7 +8,7 @@ check() {
  command -v python3 >/dev/null
  python3 -c 'import dbus; import sys; assert sys.version_info >= (3, 9)'
  python3 -c 'import dbus; b=dbus.SystemBus(); assert b.name_has_owner("org.mpris.MediaPlayer2.ShairportSync"), "Shairport MPRIS unavailable"'
- [ -r "$SRC/server.py" ] && [ -r "$SRC/index.html" ]
+ [ -r "$SRC/server.py" ] && [ -r "$SRC/index.html" ] && [ -r "$SRC/receiver.py" ] && [ -r "$SRC/installer/start-receiver.sh" ]
  echo "PASS: Python, D-Bus, Shairport MPRIS and source files"
 }
 check
@@ -19,7 +19,7 @@ python3 -m py_compile "$SRC/server.py"
 # Backups contain program files only. Existing private configuration is untouched.
 BACKUP="$DEST/backups/$(date +%Y%m%d-%H%M%S)-$$"
 mkdir -p "$BACKUP"
-for file in server.py index.html; do
+for file in receiver.py server.py index.html; do
  [ ! -f "$DEST/$file" ] || cp "$DEST/$file" "$BACKUP/$file"
  cp "$SRC/$file" "$DEST/$file.new"
  chmod 644 "$DEST/$file.new"
@@ -28,6 +28,10 @@ done
 [ ! -f /root/start-touch.sh ] || cp /root/start-touch.sh "$BACKUP/start-touch.sh"
 cp "$SRC/start-touch.sh" /root/start-touch.sh
 chmod 755 /root/start-touch.sh
+[ ! -f /root/start-receiver.sh ] || cp /root/start-receiver.sh "$BACKUP/start-receiver.sh"
+cp "$SRC/installer/start-receiver.sh" /root/start-receiver.sh.new
+chmod 755 /root/start-receiver.sh.new
+mv /root/start-receiver.sh.new /root/start-receiver.sh
 PIDFILE=/run/echo-airplay/echo-touch.pid
 if [ -f "$PIDFILE" ]; then
  pid=$(cat "$PIDFILE")
