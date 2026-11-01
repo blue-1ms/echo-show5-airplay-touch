@@ -11,7 +11,7 @@ $build="$base/app"
 New-Item -ItemType Directory -Force "$build/classes","$build/generated","$build/dex" | Out-Null
 & "$bt/aapt.exe" package -f -m -M "$src/AndroidManifest.xml" -S "$src/res" -I $platform -J "$build/generated" -F "$build/base.apk"
 if($LASTEXITCODE){throw 'aapt failed'}
-& "$jdk/bin/javac.exe" -encoding UTF-8 -source 8 -target 8 -classpath $platform -d "$build/classes" "$src/MainActivity.java" "$build/generated/io/blue1ms/echoairplay/R.java"
+& "$jdk/bin/javac.exe" -encoding UTF-8 -source 8 -target 8 -classpath $platform -d "$build/classes" "$src/MainActivity.java" "$src/HomePanel.java" "$build/generated/io/blue1ms/echoairplay/R.java"
 if($LASTEXITCODE){throw 'javac failed'}
 & "$jdk/bin/jar.exe" cf "$build/classes.jar" -C "$build/classes" .
 & "$jdk/bin/java.exe" -cp "$bt/lib/d8.jar" com.android.tools.r8.D8 --lib $platform --min-api 26 --output "$build/dex" "$build/classes.jar"

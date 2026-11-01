@@ -107,6 +107,8 @@ try {
  Device @('shell','am force-stop io.blue1ms.echoairplay') | Out-Null
  Device @('shell','am start -n io.blue1ms.echoairplay/.MainActivity') | Write-Host
  Write-Host 'Done. Select this receiver in AirPlay. No second Echo or running PC is required.'
+ Write-Host 'Home Assistant is optional. For music only, leave Home Setup unconfigured.'
+ Write-Host 'For home controls, tap Setup and enter your own reachable Home Assistant URL; sign in on the Echo.'
 } catch {
  Write-Error -ErrorAction Continue $_
  Write-Host 'Installation stopped. No ROM was flashed. Resolve the error and rerun; existing pairing is preserved.'

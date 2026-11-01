@@ -184,3 +184,34 @@ directory, not repository configuration.
 
 Before rolling back to an older backend, cancel sleep timers and restore the
 local output limit to 100%; older versions do not manage this sink gain.
+
+## Optional Home Assistant panel
+
+The Android companion has a persistent Music / Home navigation bar. It starts
+on Music. Home is optional and requires a separate, working Home Assistant
+installation; this project does not install a home automation server.
+
+1. Make Home Assistant reachable from the Echo's network. The installer does
+   not create firewall rules or expose the server to the Internet.
+2. Tap **Setup** and enter an `http://` or `https://` server/dashboard URL, for
+   example `http://homeassistant.local:8123/`. A custom path such as
+   `/echo-home/lights` works only after you create that dashboard in HA.
+3. Sign in directly on the Echo. A dedicated non-admin HA account is recommended
+   for a shared screen. The HA frontend keeps its session in app-private WebView
+   storage. No HA password or access token is included in this repository, the
+   APK, receiver pairing, or exported receiver backups.
+4. Use Music or Home at any time. Android Back returns from Home to Music.
+
+The HA page has its own WebView, without the receiver's native JavaScript
+interface. Main-frame navigation is restricted to the configured origin. Normal
+HTTPS certificate validation remains enabled; local HTTP servers are supported,
+but HTTP is not encrypted. External sign-in redirects are not supported in this
+version. The native receiver's automatic dim requests do not dim an active Home
+page. Home currently keeps the display awake.
+
+**Disconnect** clears the configured URL, not the saved HA login session. Sign
+out in the HA profile before handing the Echo to someone else; HA can also revoke
+the session. Receiver preference backups do not contain the dashboard URL, so set
+it on each device separately. A one-Echo installation works identically; pairing
+is not required. Customize HA dashboards using normal HA tile cards, light
+brightness features, and separate pages for outlets and temperature/humidity.

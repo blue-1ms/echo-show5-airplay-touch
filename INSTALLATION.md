@@ -80,7 +80,7 @@ model, multiple devices, unknown runtime and a read-only supported check).
 
 ### Touchscreen feature dependencies
 
-The installer includes the version 1.2 Android launcher and installs the new
+The installer includes the version 1.3 Android launcher and installs the new
 Python companion modules on fresh installs and upgrades. Touch pairing uses
 Alpine `openssl` (X25519) and `avahi-tools` (discovery); the installer supplies
 both. Local output control uses the existing `libpulse` library and AAudio sink,
@@ -98,3 +98,22 @@ all 10 tests on Echo 2, including actual OpenSSL X25519 exchanges. Desktop tests
 cover clock wake/playback behavior, solo controls and malformed backup previews.
 A clock schedule crossing midnight and power-loss recovery have not received
 long-duration device testing.
+
+## Optional Home Assistant in version 1.3
+
+The same `Install.cmd` installs both the music touchscreen and the optional
+Home panel. There is no separate Home Assistant edition or additional Android
+package to install. **Home Assistant is not required for installation or music.**
+The app starts on Music and does not load a Home page until you configure one.
+Leave Setup untouched for a music-only device; one Echo is sufficient.
+
+For home controls, provide your own reachable Home Assistant server, then use
+Setup and sign in on the Echo. The installer does not provision a Home Assistant
+server, import your entities, change router rules, or expose any ports.
+See [configuration](CONFIGURATION.md#optional-home-assistant-panel).
+
+Version 1.3 was installed on both tested Echo Show 5 Gen 2 devices. The owner
+confirmed grouped light control, brightness adjustment and audible music while
+switching Music/Home on each. Lights, outlets and Celsius/humidity pages rendered;
+login persisted after closing and reopening the app. Outlet power was not toggled
+during validation. Existing music UI regression tests remain applicable.

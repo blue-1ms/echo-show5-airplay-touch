@@ -22,7 +22,25 @@ Actual device screenshot: original album art, playback controls, progress and
 volume. The optional peer was offline in this capture; a second Echo is not
 required. Album artwork and track metadata belong to their respective owners.
 
+## Music only or music plus home controls
+
+Use the same installer for either setup:
+
+| Setup | What you need | What to configure |
+| --- | --- | --- |
+| Music only | One supported Echo and an AirPlay sender | Nothing in Home Setup |
+| Music + Home | The same Echo plus your own Home Assistant server | Dashboard URL and sign-in on the Echo |
+
+The app starts on **Music**. Home Assistant and a second Echo are never required.
+The optional Home panel does not install a server or change your network.
+
 ## Touchscreen features
+
+The Android app also has persistent **Music / Home** touch buttons. Home is an
+optional Home Assistant dashboard: choose **Setup**, enter a reachable server or
+dashboard URL, then sign in on the device. Music remains usable without Home
+Assistant, and changing pages does not stop the receiver. See
+[Home Assistant setup](CONFIGURATION.md#optional-home-assistant-panel).
 
 Open **Settings** on the Echo for a sleep timer, standby clock and night hours,
 artwork or large-text layouts, a local output limit, optional device pairing,
@@ -81,6 +99,12 @@ See [INSTALLATION.md](INSTALLATION.md) for scope, dependencies, troubleshooting
 and validation status. The manual companion-only instructions remain below.
 
 ## Credits: the projects that made this possible
+
+The optional Home page displays the user's own [Home Assistant](https://www.home-assistant.io/)
+installation and its frontend. Home Assistant and its contributors provide the
+device integrations, authentication, dashboards and home controls; this project
+only embeds that frontend alongside the receiver. Home Assistant is not bundled
+in the APK.
 
 **[Shairport Sync](https://github.com/mikebrady/shairport-sync)** by
 **Mike Brady and contributors** is the core AirPlay / AirPlay 2 receiver behind
