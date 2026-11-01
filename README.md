@@ -278,3 +278,9 @@ only the touch backend. Do not replace private pairing settings with examples.
 Validation on Echo 1 included an Android reboot: the receiver and touchscreen
 started automatically, and all eight live backend checks passed. This was a
 software reboot, not a physical power-loss test.
+
+## Rename a receiver
+
+Open **Help and settings (•••) → AirPlay name**, enter a name such as `Living Room`, then tap **Save name**. Saving restarts this receiver and interrupts its playback; select the new name again in your iPhone or iPad AirPlay picker. The name persists across restarts. Each device can be renamed independently, including a single unpaired receiver. Use distinct names (up to 50 UTF-8 bytes; no control characters or `%` substitutions). The Android device name and home-screen app label are unchanged.
+
+Volume pairing uses stable internal identifiers, so renaming does not require pairing again. Updated peers display the new name after their next successful status refresh.

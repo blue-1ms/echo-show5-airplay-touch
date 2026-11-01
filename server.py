@@ -9,6 +9,10 @@ import hmac
 import threading
 import time
 import os
+import re
+import signal
+import subprocess
+import unicodedata
 from urllib.request import Request, urlopen, ProxyHandler, build_opener
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
@@ -148,7 +152,105 @@ def read_state():
         can_toggle=active and bool(p.get('CanControl')) and bool(p.get('CanPause') if p.get('PlaybackStatus') == 'Playing' else p.get('CanPlay')),
         can_next=active and bool(p.get('CanGoNext')), can_previous=active and bool(p.get('CanGoPrevious')),
         paired=bool(PAIR.get('secret')), linked=bool(PAIR.get('linked')),
-        peer_online=bool(PEER.get('online')), peer_volume=PEER.get('volume'), peer_name=PAIR.get('peer_name', ''))
+        peer_online=bool(PEER.get('online')), peer_volume=PEER.get('volume'), peer_name=PEER.get('name') or PAIR.get('peer_name', ''))
+
+CONFIG_PATH = Path('/etc/shairport-sync.conf')
+
+def renamed_config(text, value):
+    if not isinstance(value, str):
+        raise ValueError('Enter a receiver name.')
+    name = value.strip()
+    if not name or len(name.encode('utf-8')) > 50 or '%' in name or any(unicodedata.category(c).startswith('C') for c in name):
+        raise ValueError('Use 1-50 UTF-8 bytes, without control characters or %.')
+    # Tokenize strings and comments before locating general.name. Never replace
+    # a commented example or a similarly named setting in another section.
+    pattern = r'"(?:\\.|[^"\\])*"|/\*.*?\*/|//[^\n]*|\#[^\n]*|[A-Za-z_][A-Za-z_0-9]*|[^\s]'
+    tokens = [m for m in re.finditer(pattern, text, re.S)
+              if not m.group().startswith(('/*', '//', '#'))]
+    depth = 0
+    general = False
+    matches = []
+    for i, token in enumerate(tokens):
+        word = token.group()
+        if word == '{':
+            if depth == 0:
+                general = i >= 2 and tokens[i-2].group() == 'general' and tokens[i-1].group() in ('=', ':')
+            depth += 1
+        elif word == '}':
+            depth -= 1
+            if depth == 0:
+                general = False
+        elif general and depth == 1 and word == 'name' and i+3 < len(tokens):
+            assignment, val, end = tokens[i+1:i+4]
+            if assignment.group() == '=' and val.group().startswith('"') and end.group() == ';':
+                matches.append(val)
+    if len(matches) != 1:
+        raise ValueError('Expected one general.name setting. Check the receiver configuration.')
+    val = matches[0]
+    escaped = name.replace('\\', '\\\\').replace('"', '\\"')
+    return text[:val.start()] + '"' + escaped + '"' + text[val.end():], name
+
+def receiver_pids():
+    result = []
+    for item in Path('/proc').iterdir():
+        if not item.name.isdigit():
+            continue
+        try:
+            if (item / 'exe').resolve().name == 'shairport-sync' and os.path.samefile(item / 'root', '/'):
+                result.append(int(item.name))
+        except (OSError, RuntimeError):
+            pass
+    return result
+
+def restart_receiver():
+    for pid in receiver_pids():
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+    for _ in range(30):
+        if not receiver_pids():
+            break
+        time.sleep(.1)
+    else:
+        raise RuntimeError('Receiver did not stop')
+    with open('/run/echo-airplay/shairport-sync.log', 'ab') as log:
+        subprocess.Popen(['/usr/local/bin/shairport-sync', '-v'], stdout=log,
+                         stderr=log, start_new_session=True)
+
+def rename_receiver(value):
+    original = CONFIG_PATH.read_text(encoding='utf-8')
+    updated, name = renamed_config(original, value)
+    if updated == original:
+        return
+    def write(content):
+        tmp = CONFIG_PATH.with_suffix('.rename.tmp')
+        tmp.write_text(content, encoding='utf-8')
+        os.chmod(tmp, CONFIG_PATH.stat().st_mode & 0o777)
+        tmp.replace(CONFIG_PATH)
+    backup = CONFIG_PATH.with_suffix('.before-rename')
+    backup.write_text(original, encoding='utf-8')
+    os.chmod(backup, 0o600)
+    write(updated)
+    try:
+        restart_receiver()
+        for _ in range(30):
+            try:
+                core, _, _ = interfaces()
+                if str(core.Get('org.gnome.ShairportSync', 'ServiceName', timeout=.5)) == name:
+                    return
+            except Exception:
+                pass
+            time.sleep(.1)
+        raise RuntimeError('New name was not advertised')
+    except Exception:
+        write(original)
+        try:
+            restart_receiver()
+        except Exception:
+            pass
+        raise RuntimeError('Rename failed. Previous name restored; receiver reconnecting.')
+
 
 def set_volume(value):
     value = float(value)
@@ -255,12 +357,16 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(403, {'error': 'Local access only'})
         if self.path != '/api/control':
             return self.reply(404, {'error': 'Not found'})
+        action = None
         try:
             length = int(self.headers.get('Content-Length', '0'))
             if not 0 < length <= 1024:
                 return self.reply(400, {'error': 'Invalid request'})
             data = json.loads(self.rfile.read(length))
             action = data.get('action')
+            if action == 'rename':
+                rename_receiver(data.get('value'))
+                return self.reply(200, {'ok': True})
             state = read_state()
             _, props, player = interfaces()
             methods = {'toggle': 'PlayPause', 'next': 'Next', 'previous': 'Previous'}
@@ -297,10 +403,12 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 return self.reply(409, {'error': 'This control is unavailable. Use your iPhone.'})
             return self.reply(200, {'ok': True})
-        except (ValueError, KeyError, TypeError):
+        except ValueError as error:
+            return self.reply(400, {'error': str(error) or 'Invalid request'})
+        except (KeyError, TypeError):
             return self.reply(400, {'error': 'Invalid request'})
         except Exception:
-            return self.reply(503, {'error': 'Action failed. Please try again.'})
+            return self.reply(503, {'error': 'Rename failed. Previous name restored; receiver reconnecting.' if action == 'rename' else 'Action failed. Please try again.'})
 
 if __name__ == '__main__':
     if PAIR.get('secret'):

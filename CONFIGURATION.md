@@ -123,3 +123,9 @@ The tested chroot keeps `/run` on disk. A stale Avahi PID file can refer to an
 unrelated Android process after reboot, causing Avahi's PID-based check to skip
 startup. The Echo boot hook removes that stale PID file only when no actual
 `avahi-daemon` process is running, before invoking the existing starter.
+
+## Rename a receiver
+
+Open **Help and settings (•••) → AirPlay name**, enter a name such as `Living Room`, then tap **Save name**. Saving restarts this receiver and interrupts its playback; select the new name again in your iPhone or iPad AirPlay picker. The name persists across restarts. Each device can be renamed independently, including a single unpaired receiver. Use distinct names (up to 50 UTF-8 bytes; no control characters or `%` substitutions). The Android device name and home-screen app label are unchanged.
+
+Volume pairing uses stable internal identifiers, so renaming does not require pairing again. Updated peers display the new name after their next successful status refresh.
