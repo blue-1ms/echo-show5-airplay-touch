@@ -187,20 +187,20 @@ local output limit to 100%; older versions do not manage this sink gain.
 
 ## Optional Home Assistant panel
 
-The Android companion has a persistent Music / Home navigation bar. It starts
-on Music. Home is optional and requires a separate, working Home Assistant
+The Android companion starts on AirPlay. Optional top tabs appear only after a
+service URL is configured. Home is optional and requires a separate, working Home Assistant
 installation; this project does not install a home automation server.
 
 1. Make Home Assistant reachable from the Echo's network. The installer does
    not create firewall rules or expose the server to the Internet.
-2. Tap **Setup** and enter an `http://` or `https://` server/dashboard URL, for
+2. Open **AirPlay Settings (•••) → Connections → Home Assistant** and enter an `http://` or `https://` server/dashboard URL, for
    example `http://homeassistant.local:8123/`. A custom path such as
    `/echo-home/lights` works only after you create that dashboard in HA.
 3. Sign in directly on the Echo. A dedicated non-admin HA account is recommended
    for a shared screen. The HA frontend keeps its session in app-private WebView
    storage. No HA password or access token is included in this repository, the
    APK, receiver pairing, or exported receiver backups.
-4. Use Music or Home at any time. Android Back returns from Home to Music.
+4. Use the configured top tabs at any time. Android Back returns to AirPlay.
 
 The HA page has its own WebView, without the receiver's native JavaScript
 interface. Main-frame navigation is restricted to the configured origin. Normal
@@ -215,3 +215,13 @@ the session. Receiver preference backups do not contain the dashboard URL, so se
 it on each device separately. A one-Echo installation works identically; pairing
 is not required. Customize HA dashboards using normal HA tile cards, light
 brightness features, and separate pages for outlets and temperature/humidity.
+
+
+### Optional Music Assistant library
+The Android view uses the full screen. Compact top tabs appear only when an optional service is configured and list only configured destinations. Open Connections from AirPlay Settings to configure a Music Assistant http(s) server URL. Library opens a separate WebView with its own login, without the local receiver JavaScript bridge. No MA address is configured by default. Sign in once on each Echo; select the intended Echo or paired group in MA before playback. Home Assistant remains optional. Native AirPlay playback continues when changing pages. External-origin navigation is blocked in the Library view.
+
+
+### Echo touch Library
+Library now uses a bundled large-touch frontend: songs, favorite tracks, playlists, albums, search, explicit player selection, and queue controls. Full MA opens the original frontend; tap Library again to return. The compact frontend uses the existing MA origin and that WebView's MA login token, never a bundled credential. If signed out, use Full MA to log in. MA HTTP API compatibility is required; API/authentication errors are shown inline. A player must be explicitly selected before starting playback. It does not stream through the WebView.
+
+The touch Library volume slider and +/- buttons act on the selected destination. For groups, each current member is explicitly set to the same percentage; relative volume offsets are not preserved by this UI. This happens only on a user adjustment, never continuously or automatically after reconnecting. Full MA retains its own volume behavior.

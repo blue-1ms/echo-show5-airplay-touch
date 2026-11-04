@@ -49,6 +49,7 @@ public class MainActivity extends Activity {
   web.setWebChromeClient(new WebChromeClient());
   web.setWebViewClient(new WebViewClient() {
    @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {return !local(request.getUrl().toString());}
+   @Override public void onPageFinished(WebView view,String page){if(local(page))view.evaluateJavascript("(function(){if(!document.getElementById('native-connections')){var st=document.createElement('style');st.textContent='.header-actions{align-items:center}.header-actions .icon{display:flex;align-items:center;justify-content:center;width:48px;height:48px;min-height:48px;padding:0;line-height:1;flex:none}';document.head.appendChild(st);var box=document.getElementById('info');if(box){var b=document.createElement('button');b.id='native-connections';b.textContent='Connections';b.onclick=function(){EchoDisplay.connections()};box.appendChild(b)}}})()",null);}
    @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
     if(request.isForMainFrame()) {
      view.loadDataWithBaseURL(URL,"<html><body style='background:#101215;color:#bcebd8;font:24px sans-serif;text-align:center;padding:15vh'>Echo AirPlay<p style='font-size:17px;color:#b1b8bc'>Waiting for the local receiver…</p></body></html>","text/html","UTF-8",null);
@@ -90,6 +91,7 @@ public class MainActivity extends Activity {
   finally {pendingBackup=null;}
  }
  public class Display {
+  @JavascriptInterface public void connections(){runOnUiThread(()->homePanel.connections());}
   @JavascriptInterface public void saveBackup(String json) {runOnUiThread(() -> {
    try {
     if(json.getBytes(StandardCharsets.UTF_8).length>65536||!new JSONObject(json).optString("format").equals("echo-airplay-touch"))throw new Exception("Invalid backup");

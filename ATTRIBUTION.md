@@ -85,3 +85,6 @@ linked upstream project for its full contributors and licensing information.
 Amazon, Echo, Apple, AirPlay and related product names belong to their respective
 owners. This is an independent experimental project, not an official Amazon or
 Apple product.
+
+## Music Assistant
+The optional touch Library uses the public API of Music Assistant. The original frontend remains available through Full MA. Server and frontend are separate upstream projects: https://github.com/music-assistant . Their software is not bundled in this APK.

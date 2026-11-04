@@ -1,4 +1,4 @@
-# Echo Show 5 AirPlay Touch — Music & Optional Home Assistant
+# Echo Show 5 AirPlay Touch — AirPlay, Library & Home
 
 An optional touchscreen frontend for an **existing** Shairport Sync receiver.
 One device is enough. Playback, pause, track navigation, original album artwork,
@@ -14,49 +14,51 @@ an audio driver. The existing terminal UI is independent of this companion.
 
 **One Echo is enough. Multiple devices are optional.**
 
-## Music and Home on a real Echo
+## AirPlay, optional Library, and optional Home
 
-### Music: AirPlay playback
+![AirPlay with conditional top navigation](assets/echo-airplay-tabs.png)
 
-![Echo Show 5 Gen 2 Music page with artwork, playback controls and Music/Home navigation](assets/echo-music-home-navigation.png)
+The app starts on **AirPlay**. With no Home Assistant or Music Assistant URL
+configured, it stays a pure AirPlay touchscreen: no optional tabs, empty panels,
+or setup prompts. **One Echo is enough.**
 
-Actual device screenshot of the version 1.3 touchscreen: original album art,
-playback controls, progress, volume and the persistent Music / Home buttons.
-The linked peer shown here is optional; **one Echo works independently**.
-Album artwork and track metadata belong to their respective owners.
+Configure optional services through **AirPlay Settings (•••) → Connections**.
+Only configured destinations appear as compact top tabs; there is no bottom dock.
+Neither server is installed by this project.
+
+### Library: optional Music Assistant touch interface
+
+![Music Assistant touch Library with artwork and volume controls](assets/echo-library-touch.png)
+
+The Echo-sized Library has large song lists, search, favorite tracks, playlists,
+albums, now-playing artwork, transport controls, and a volume slider with +/- buttons.
+Choose a player before starting playback. For a group, Library volume adjustments
+set each current member to the same percentage. It does not continuously force
+speaker volumes or replay old volume changes after reconnecting.
+
+**Full MA** keeps the original Music Assistant interface available for advanced
+features. Tap Library to return. Sign in through Full MA when needed; the compact
+view uses that WebView's existing MA session without bundling credentials.
+The music is sent by your MA server to the selected player, not through this WebView.
+Avoid casting from iPhone and MA to the same receiver simultaneously.
 
 ### Home: optional Home Assistant dashboard
 
-![Echo Show 5 Gen 2 Home page showing Home Assistant grouped lights and brightness controls](assets/echo-home-lights.png)
+![Optional Home Assistant dashboard](assets/echo-home-lights.png)
 
-Actual device screenshot of a custom Home Assistant dashboard, with grouped
-lights, brightness controls, and tabs for outlets and temperature/humidity.
-Tap Music to return to playback controls; switching pages does not stop AirPlay.
+Provide your own reachable dashboard URL and sign in on the Echo. The displayed
+rooms, entities, and paired speakers are examples, not bundled defaults.
+Switching pages leaves the receiver running. See [configuration](CONFIGURATION.md).
 
-**Home Assistant is optional and runs on your own server.** The room names,
-entities and dashboard shown are an example, not a bundled configuration.
-Connect your own dashboard through Setup, or leave it unconfigured for music-only
-use. See [Home Assistant setup](CONFIGURATION.md#optional-home-assistant-panel).
-
-## Music only or music plus home controls
-
-Use the same installer for either setup:
-
-| Setup | What you need | What to configure |
-| --- | --- | --- |
-| Music only | One supported Echo and an AirPlay sender | Nothing in Home Setup |
-| Music + Home | The same Echo plus your own Home Assistant server | Dashboard URL and sign-in on the Echo |
-
-The app starts on **Music**. Home Assistant and a second Echo are never required.
-The optional Home panel does not install a server or change your network.
+Artwork and track metadata belong to their respective owners. Screenshots are
+from actual Echo Show 5 Gen 2 devices; the Library and navigation were validated
+with Music Assistant 2.10.9. Other server versions may require compatibility updates.
 
 ## Touchscreen features
 
-The Android app also has persistent **Music / Home** touch buttons. Home is an
-optional Home Assistant dashboard: choose **Setup**, enter a reachable server or
-dashboard URL, then sign in on the device. Music remains usable without Home
-Assistant, and changing pages does not stop the receiver. See
-[Home Assistant setup](CONFIGURATION.md#optional-home-assistant-panel).
+Optional Library and Home tabs appear only after configuration. The app works
+independently as an AirPlay receiver frontend without either service. See
+[configuration](CONFIGURATION.md) for setup, authentication, and network requirements.
 
 Open **Settings** on the Echo for a sleep timer, standby clock and night hours,
 artwork or large-text layouts, a local output limit, optional device pairing,
@@ -352,3 +354,7 @@ Validated on both tested Echo units: rename and restore, individual audible play
 Pause/resume display now uses sender playback-rate metadata as well as explicit stream events, fixing the tested iPhone NetEase Cloud Music case where audio paused but the GUI remained on `Now playing`. Peer connectivity and receiver readiness are separate, working addresses survive discovery failures, and linked controls carry sequence numbers and short expiry windows. Update both paired devices together; single-device use remains independent.
 
 The user confirmed Apple Music and NetEase playback/status checks, two-device volume linking, and recovery after a 26-second companion-service interruption without interrupting music. Captured PulseAudio and Android gain remained constant. A separate final network sample completed 44 authenticated probes without failure over approximately 107 seconds. The user ended observation and accepted the update before the planned 30-minute soak and mono-signal comparison; those longer checks were **not completed**. The intermittent loudness symptom was not reproduced during the captured interval, so its original cause is not claimed as proven.
+
+## Music Assistant credit
+
+The optional Library controls your own [Music Assistant](https://www.music-assistant.io/) server through its public API. Full MA opens its original frontend. Music Assistant is an independent Open Home Foundation project; this companion does not bundle or replace the server.

@@ -9,7 +9,7 @@ $bt="$base/tools/android-11"
 $platform="$base/platform/android-11/android.jar"
 $build="$base/app"
 New-Item -ItemType Directory -Force "$build/classes","$build/generated","$build/dex" | Out-Null
-& "$bt/aapt.exe" package -f -m -M "$src/AndroidManifest.xml" -S "$src/res" -I $platform -J "$build/generated" -F "$build/base.apk"
+& "$bt/aapt.exe" package -f -m -M "$src/AndroidManifest.xml" -S "$src/res" -A "$src/assets" -I $platform -J "$build/generated" -F "$build/base.apk"
 if($LASTEXITCODE){throw 'aapt failed'}
 & "$jdk/bin/javac.exe" -encoding UTF-8 -source 8 -target 8 -classpath $platform -d "$build/classes" "$src/MainActivity.java" "$src/HomePanel.java" "$build/generated/io/blue1ms/echoairplay/R.java"
 if($LASTEXITCODE){throw 'javac failed'}

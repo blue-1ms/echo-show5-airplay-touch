@@ -80,7 +80,7 @@ model, multiple devices, unknown runtime and a read-only supported check).
 
 ### Touchscreen feature dependencies
 
-The installer includes the version 1.3 Android launcher and installs the new
+The installer includes the version 1.4 Android launcher and installs the new
 Python companion modules on fresh installs and upgrades. Touch pairing uses
 Alpine `openssl` (X25519) and `avahi-tools` (discovery); the installer supplies
 both. Local output control uses the existing `libpulse` library and AAudio sink,
@@ -117,3 +117,18 @@ confirmed grouped light control, brightness adjustment and audible music while
 switching Music/Home on each. Lights, outlets and Celsius/humidity pages rendered;
 login persisted after closing and reopening the app. Outlet power was not toggled
 during validation. Existing music UI regression tests remain applicable.
+
+
+## Version 1.4: optional services, music-only defaults
+
+The bundled APK includes the touch-sized MA Library and conditional top navigation.
+A fresh installation has no HA/MA URLs and presents AirPlay only. Existing app
+preferences and WebView sessions are preserved by APK upgrades. Configure servers
+through AirPlay Settings (•••) → Connections. No server credentials, example home
+addresses, network rules, stereo pairing, EQ, or device-specific delay calibration
+are applied by this UI release. Full MA remains available within Library.
+
+Validated on two existing rooted Echo Show 5 Gen 2 receivers: Library browsing,
+dual-speaker audible playback/sync, equal group volume and stable percentage
+readback were accepted by the owner. The fresh receiver/source-build dependency
+path retains the earlier validation limits; it was not re-flashed for this release.
